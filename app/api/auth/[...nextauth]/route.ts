@@ -1,24 +1,67 @@
 import type { NextAuthOptions } from "next-auth"
 import NextAuth from "next-auth/next"
-import GoogleProvider from "next-auth/providers/google"
-import GitHubProvider from "next-auth/providers/github"
-import TwitterProvider from "next-auth/providers/twitter"
-import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
-import { compare } from "bcrypt"
-
 import { db } from "@/lib/db"
-import { sendVerificationEmail } from "@/lib/email"
+import { UserProfile } from "@/types" // Assuming your UserProfile type is here
+import { JWT } from "next-auth/jwt"
 
 declare module "next-auth" {
   interface Session {
-    user: {
-      id: string
-      name?: string | null
-      email?: string | null
-      image?: string | null
-      role?: string | null
+    accessToken?: string;
+    user: UserProfile & {
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      image: string;
+    };
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpires?: number;
+    user?: UserProfile & { id: string };
+  }
+}
+
+
+// This function is for REFRESHING the token. Your implementation is correct.
+async function refreshAccessToken(token: JWT) {
+  try {
+    const response = await fetch("https://whatsyour.info/api/v1/oauth/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        client_id: process.env.WYI_CLIENT_ID,
+        client_secret: process.env.WYI_CLIENT_SECRET,
+        grant_type: "refresh_token",
+        refresh_token: token.refreshToken,
+      }),
+    });
+
+    const refreshedTokens = await response.json();
+
+    if (!response.ok) {
+      throw refreshedTokens;
     }
+
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Keep old RT if new one isn't sent
+    };
+  } catch (error) {
+    console.error("Error refreshing access token", error);
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    };
   }
 }
 
@@ -29,112 +72,105 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/login",
-    verifyRequest: "/auth/verify",
+    error: '/auth/login',
   },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    GitHubProvider({
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    }),
-    TwitterProvider({
-      clientId: process.env.TWITTER_CLIENT_ID!,
-      clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-    }),
-        CredentialsProvider({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+    {
+      id: "wyi",
+      name: "WhatsYourInfo",
+      type: "oauth",
+      authorization: {
+        url: "https://whatsyour.info/oauth/authorize",
+        params: { scope: "profile:read email:read" },
       },
-      async authorize(credentials) {
-        try {
-          if (!credentials?.email || !credentials?.password) {
-            throw new Error("Missing email or password");
-          }
-    
-          const user = await db.user.findUnique({
-            where: {
-              email: credentials.email,
+      // This is the user info endpoint, it's correct.
+      userinfo: "https://whatsyour.info/api/v1/me",
+
+      // --- START OF THE FIX ---
+      // We are now defining a custom handler for the token endpoint communication.
+      token: {
+        url: "https://whatsyour.info/api/v1/oauth/token",
+        async request(context) {
+          const response = await fetch("https://whatsyour.info/api/v1/oauth/token", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
             },
+            body: JSON.stringify({
+              grant_type: "authorization_code",
+              code: context.params.code,
+              redirect_uri: context.provider.callbackUrl,
+              client_id: context.provider.clientId,
+              client_secret: context.provider.clientSecret,
+            }),
           });
-    
-          if (!user || !user.password) {
-            throw new Error("Invalid email or password");
+
+          const tokens = await response.json();
+          if (!response.ok) {
+            throw new Error(tokens.error_description || "Token request failed");
           }
-    
-          if (!user.emailVerified) {
-            try {
-              if (user.email) {
-                await sendVerificationEmail(user.email)
-              } else {
-                throw new Error("User email is null")
-              }
-            } catch (e) {
-              console.error("Failed to send verification email:", e)
-            }
-            throw new Error("Please verify your email before logging in")
-          }
-          
-    
-          const isPasswordValid = await compare(credentials.password, user.password);
-    
-          if (!isPasswordValid) {
-            throw new Error("Invalid email or password");
-          }
-    
-          return {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            role: user.role,
-          };
-        } catch (error) {
-          console.error("Error in authorize function:", error);
-          throw new Error("Authentication failed");
-        }
+          return { tokens };
+        },
       },
-    }),
-  ],
-  callbacks: {
-    async session({ token, session }) {
-      if (token && session.user) {
-        session.user.id = token.id as string
-        session.user.name = token.name
-        session.user.email = token.email
-        session.user.role = token.role as string
-        session.user.image = token.picture
-      }
-      return session
+      // --- END OF THE FIX ---
+
+      clientId: process.env.WYI_CLIENT_ID,
+      clientSecret: process.env.WYI_CLIENT_SECRET,
+      async profile(profile: UserProfile, tokens) {
+        return {
+          id: profile._id, // Map _id from API to id for the adapter
+          name: `${profile.firstName} ${profile.lastName}`, // Combine first and last name
+          email: profile.email,
+          image: profile.avatar, // Map avatar from API to image for the adapter
+          isProUser: profile.isProUser,
+          emailVerified: profile.emailVerified,
+          bio: profile.bio,
+          role: 'admin'
+        };
+      },
     },
+  ],
+
+  callbacks: {
     async jwt({ token, user }) {
+      // On initial sign in, find the user in the database to get their role
       const dbUser = await db.user.findFirst({
         where: {
           email: token.email,
         },
-      })
+      });
 
       if (!dbUser) {
         if (user) {
-          token.id = user.id
+          token.id = user.id;
         }
-        return token
+        return token;
       }
 
+      // This is the line that makes your middleware work!
+      // It adds the user's role from the database to the JWT.
       return {
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
-        role: dbUser.role,
         picture: dbUser.image,
+        role: dbUser.role, // <-- THIS IS THE KEY
+      };
+    },
+
+    async session({ token, session }) {
+      if (token) {
+        session.user.id = token.id;
+        session.user.name = token.name;
+        session.user.email = token.email;
+        session.user.image = token.picture;
+        session.user.role = token.role; // Also passing it to the client-side session
       }
+      return session;
     },
   },
-}
+};
 
-const handler = NextAuth(authOptions)
+const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST }
+export { handler as GET, handler as POST };

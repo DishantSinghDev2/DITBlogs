@@ -85,6 +85,7 @@
     "react-icons": "latest",
     "react-resizable-panels": "^2.1.7",
     "recharts": "latest",
+    "redis": "^5.8.0",
     "sass": "^1.87.0",
     "slugify": "latest",
     "sonner": "^1.7.1",

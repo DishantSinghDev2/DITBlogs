@@ -3,11 +3,10 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "./generated"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -39,19 +38,19 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  password      String?
+  email         String?  @unique
+  emailVerified Boolean?
   image         String?
-  bio           String?   @db.Text
-  role          String    @default("user") // user, writer, editor, admin
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  followers     User[]    @relation("UserFollows")
-  following     User[]    @relation("UserFollows")
+  bio           String?  @db.Text
+  role          String   @default("admin") // user, writer, editor, admin
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  followers     User[]   @relation("UserFollows")
+  following     User[]   @relation("UserFollows")
   website       String?
+  isProUser     Boolean
 
   accounts               Account[]
   sessions               Session[]
@@ -88,7 +87,7 @@ model Post {
   id              String    @id @default(cuid())
   title           String
   slug            String    @unique
-  content         String    @db.LongText
+  content         String    @db.Text
   excerpt         String?   @db.Text
   featuredImage   String?
   published       Boolean   @default(false)
@@ -219,7 +218,7 @@ model Page {
   title     String
   excerpt   String?  @db.Text
   slug      String   @unique
-  content   String   @db.LongText
+  content   String   @db.Text
   published Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 export const middleware = withAuth(
     function middleware(req) {
         const { role } = req.nextauth.token || {};
+        console.log(role)
 
         // Allow only 'editor' and 'admin' roles to access /dashboard pages
         if (req.nextUrl.pathname.startsWith("/dashboard")) {

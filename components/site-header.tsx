@@ -79,12 +79,12 @@ export function SiteHeader() {
           <Link href="/" className="flex items-center space-x-2">
             {siteConfig?.logo_url ? (
               <img
-                src={siteConfig.logo_url || "/placeholder.svg"}
-                alt={siteConfig.site_name || "InkPress"}
+                src={"/placeholder.svg"}
+                alt={"DITBlogs"}
                 className="h-8 w-auto"
               />
             ) : (
-              <span className="text-xl font-bold">{siteConfig?.site_name || "InkPress"}</span>
+              <span className="text-xl font-bold">DITBlogs</span>
             )}
           </Link>
 
