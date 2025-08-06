@@ -14,32 +14,68 @@ import { Suspense } from "react"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
+  // --- General Metadata ---
   title: {
-    default: "InkPress - Modern Blogging Platform",
-    template: "%s | InkPress",
+    default: "DITBlogs - The Effortless Blogging Platform for Your Business",
+    template: "%s | DITBlogs",
   },
-  description: "A modern blogging and publishing platform built with Next.js",
-  keywords: ["blog", "publishing", "writing", "content management", "nextjs"],
+  description: "Power your website with a seamless, feature-rich blog. DITBlogs provides the headless backend, a powerful editor, and full organization management.",
+  
+  // --- SEO Keywords ---
+  keywords: [
+    "headless blog",
+    "headless cms",
+    "saas blogging",
+    "blog for business",
+    "organization blog",
+    "content management",
+    "next.js blog",
+    "react blog",
+    "team collaboration",
+    "content marketing",
+  ],
+  
+  // --- Author and Creator ---
   authors: [
     {
-      name: "InkPress Team",
+      name: "DishIs Technologies",
+      url: "https://dishis.dev", // Optional: Add your company URL
     },
   ],
-  creator: "InkPress Team",
+  creator: "DishIs Technologies",
+
+  // --- Open Graph (for social sharing on platforms like Facebook, LinkedIn) ---
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: process.env.NEXTAUTH_URL || "https://inkpress.vercel.app",
-    title: "InkPress - Modern Blogging Platform",
-    description: "A modern blogging and publishing platform built with Next.js",
-    siteName: "InkPress",
+    url: process.env.NEXTAUTH_URL || "https://ditblogs.com", // Use your production URL
+    title: "DITBlogs: The Effortless Blogging Platform for Your Business",
+    description: "Power your website with a seamless, feature-rich blog, including a powerful editor and organization management.",
+    siteName: "DITBlogs",
+    // Optional: Add a specific OG image
+    // images: [
+    //   {
+    //     url: `${process.env.NEXTAUTH_URL}/og-image.png`,
+    //     width: 1200,
+    //     height: 630,
+    //     alt: 'DITBlogs - The Effortless Blogging Platform for Your Business',
+    //   },
+    // ],
   },
+
+  // --- Twitter Card (for sharing on Twitter) ---
   twitter: {
     card: "summary_large_image",
-    title: "InkPress - Modern Blogging Platform",
-    description: "A modern blogging and publishing platform built with Next.js",
-    creator: "@inkpress",
+    title: "DITBlogs: Effortless Blogging for Your Business",
+    description: "Power your website with a seamless, feature-rich blog, including a powerful editor and organization management.",
+    // Optional: Add your Twitter handle
+    // creator: "@yourTwitterHandle", 
+    // Optional: Add the same OG image here
+    // images: [`${process.env.NEXTAUTH_URL}/og-image.png`],
   },
+
+  // --- Icons and Manifest ---
+  // (These paths point to files in your /public directory. No changes needed unless filenames are different)
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon-16x16.png",
@@ -47,7 +83,6 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
 }
-
 export default function RootLayout({
   children,
 }: {
