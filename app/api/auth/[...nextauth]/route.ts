@@ -118,6 +118,7 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.WYI_CLIENT_SECRET,
       async profile(profile: UserProfile, tokens) {
         return {
+          ...tokens,
           id: profile._id, // Map _id from API to id for the adapter
           name: `${profile.firstName} ${profile.lastName}`, // Combine first and last name
           email: profile.email,

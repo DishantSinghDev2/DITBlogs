@@ -39,7 +39,7 @@ export function DashboardShell({
       <div className="flex flex-1 flex-col md:flex-row">
         {/* Sidebar */}
         <aside
-          className={`z-50 w-64 bg-white dark:bg-zinc-900 p-4 shadow-lg dark:shadow-black/40 transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:block ${
+          className={`z-50 w-64 bg-white dark:bg-zinc-900 p-4 bg-background/80 backdrop-blur-sm border transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:block ${
             sidebarOpen ? "fixed top-0 left-0 h-full pt-14 translate-x-0" : "hidden md:block"
           }`}
         >

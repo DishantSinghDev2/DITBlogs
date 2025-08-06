@@ -26,7 +26,7 @@ export default function AuthPage() {
     try {
       // The provider ID 'whatsyourinfo' must match the one in your authOptions
       await signIn("wyi", {
-        callbackUrl: "/dashboard",
+        callbackUrl: "/onboarding",
       })
     } catch (error) {
       setAuthError("An unexpected error occurred during login.")

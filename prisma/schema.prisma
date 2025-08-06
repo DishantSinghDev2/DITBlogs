@@ -10,6 +10,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enum for user roles within an organization
+enum UserRole {
+  WRITER
+  EDITOR
+  ORG_ADMIN
+}
+
+// Enum for the status of a membership request
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Enum for the subscription plans
+enum Plan {
+  FREE
+  GROWTH
+  SCALE
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -38,32 +59,66 @@ model Session {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  name          String?
-  email         String?  @unique
-  emailVerified Boolean?
-  image         String?
-  bio           String?  @db.Text
-  role          String   @default("admin") // user, writer, editor, admin
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  followers     User[]   @relation("UserFollows")
-  following     User[]   @relation("UserFollows")
-  website       String?
-  isProUser     Boolean
+  id               String    @id @default(cuid())
+  name             String?
+  email            String?   @unique
+  emailVerified    Boolean?
+  image            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  role             UserRole? // Role within the organization
+  membershipStatus MembershipStatus @default(PENDING)
 
-  accounts               Account[]
-  sessions               Session[]
-  posts                  Post[]
-  comments               Comment[]
-  bookmarks              Bookmark[]
-  notifications          Notification[]
-  affiliateLinks         AffiliateLink[]
-  notificationsSettings  NotificationSettings? @relation(fields: [notificationSettingsId], references: [id])
-  notificationSettingsId String?
+  // A user can be part of one organization
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  accounts          Account[]
+  sessions          Session[]
+  posts             Post[] // Posts authored by the user
+  comments          Comment[]
+  membershipRequest MembershipRequest[] @relation("UserRequests")
 
   @@index([email])
+  @@index([organizationId])
 }
+
+model Organization {
+  id                 String   @id @default(cuid())
+  name               String
+  website            String // The website URL to connect for blogs
+  apiKey             String   @unique @default(cuid()) // For API access
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  
+  // The user who created/owns the organization
+  ownerId            String   @unique
+  owner              User     @relation(fields: [ownerId], references: [id])
+  
+  // Subscription plan details
+  plan               Plan     @default(FREE)
+  monthlyPostViews   Int      @default(0) // Counter for monthly views, reset via a cron job
+  
+  members            User[]
+  posts              Post[]
+  membershipRequests MembershipRequest[] @relation("OrgRequests")
+}
+
+model MembershipRequest {
+  id             String           @id @default(cuid())
+  message        String?          @db.Text
+  status         MembershipStatus @default(PENDING)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  userId         String
+  user           User             @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization     @relation("OrgRequests", fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+}
+
 
 model VerificationToken {
   identifier String
@@ -73,25 +128,14 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model Invite {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  token     String   @unique
-  role      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  used      Boolean  @default(false)
-}
-
 model Post {
   id              String    @id @default(cuid())
   title           String
   slug            String    @unique
-  content         String    @db.Text
+  content         Json      // Using JSON for rich text editor content
   excerpt         String?   @db.Text
   featuredImage   String?
   published       Boolean   @default(false)
-  featured        Boolean   @default(false)
   metaTitle       String?
   metaDescription String?   @db.Text
   createdAt       DateTime  @default(now())
@@ -99,14 +143,19 @@ model Post {
   publishedAt     DateTime?
   readingTime     Int?
 
+  // The organization this post belongs to
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // The user who authored the post
   authorId   String
   author     User       @relation(fields: [authorId], references: [id])
   categoryId String?
   category   Category?  @relation(fields: [categoryId], references: [id])
   tags       Tag[]
   comments   Comment[]
-  views      PostView[]
-  bookmarks  Bookmark[]
+
+  @@index([organizationId])
 }
 
 model Category {
@@ -137,135 +186,4 @@ model Comment {
   parentId String?
   parent   Comment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: SetNull)
   replies  Comment[] @relation("CommentToComment")
-}
-
-model PostView {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  postId    String
-  post      Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  sessionId String?
-  userId    String?
-  ip        String?
-}
-
-model Bookmark {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-
-  postId String
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  type      String
-  title     String
-  message   String
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  relatedId String?
-}
-
-model Newsletter {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model SiteConfig {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     Json
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Seo {
-  id                 String   @id @default(cuid())
-  metaTitle          String?
-  metaDescription    String?  @db.Text
-  ogTitle            String?
-  ogDescription      String?  @db.Text
-  ogImage            String?
-  twitterTitle       String?
-  twitterDescription String?  @db.Text
-  twitterImage       String?
-  canonicalUrl       String?
-  robotsTxt          String?  @db.Text
-  sitemapEnabled     Boolean  @default(false)
-  schemaOrgEnabled   Boolean  @default(false)
-  googleAnalyticsId  String?
-  googleTagManagerId String?
-  metaPixelId        String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-}
-
-model Page {
-  id        String   @id @default(cuid())
-  title     String
-  excerpt   String?  @db.Text
-  slug      String   @unique
-  content   String   @db.Text
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model AffiliateLink {
-  id          String   @id @default(cuid())
-  name        String
-  url         String
-  description String?
-  shortCode   String   @unique
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Follow {
-  id          String @id @default(cuid())
-  followerId  String
-  followingId String
-
-  @@unique([followerId, followingId])
-  @@index([followerId])
-  @@index([followingId])
-}
-
-model ContactMessage {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  subject   String
-  message   String   @db.Text
-  userId    String?
-  createdAt DateTime @default(now())
-}
-
-model NotificationSettings {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  emailNotifications Boolean  @default(true)
-  marketingEmails    Boolean  @default(true)
-  newComment         Boolean  @default(true)
-  newFollower        Boolean  @default(true)
-  newPost            Boolean  @default(true)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  User               User[]
 }

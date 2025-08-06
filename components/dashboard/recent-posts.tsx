@@ -24,7 +24,7 @@ export function RecentPosts({ posts }: RecentPostsProps) {
             posts.map((post) => (
               <div key={post.id} className="flex items-center justify-between space-x-4">
                 <div className="space-y-1">
-                  <Link href={`/dashboard/posts/${post.id}`} className="font-medium hover:underline">
+                  <Link href={`/dashboard/editor/${post.id}`} className="font-medium hover:underline">
                     {post.title}
                   </Link>
                   <div className="flex items-center space-x-2 text-sm text-muted-foreground">
