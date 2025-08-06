@@ -25,6 +25,8 @@ export default async function EditorPage() {
     },
   });
 
+  console.log(user)
+
   // 2. If the user doesn't belong to any organization, they can't create posts.
   if (!user?.organizationId) {
     // You might want to redirect them to a page that says "Join an organization first"

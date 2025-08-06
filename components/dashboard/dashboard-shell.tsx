@@ -1,55 +1,97 @@
-'use client'
+"use client";
 
-import { useState, type ReactNode } from "react"
-import { DashboardNav } from "@/components/dashboard/dashboard-nav"
-import { Sidebar as SidebarIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { UserRole } from "@prisma/client"
+import { useState, type ReactNode } from "react";
+import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { Sidebar as SidebarIcon, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { type UserRole } from "@prisma/client";
+import { motion, AnimatePresence } from "framer-motion"; // Import framer-motion
 
 export function DashboardShell({
   userRole,
   children,
 }: {
-  userRole: UserRole | null; // Use the specific enum type
+  userRole: UserRole | null;
   children: ReactNode;
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Define animation variants for the sidebar
+  const sidebarVariants = {
+    hidden: { x: "-100%" },
+    visible: { x: 0 },
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground overflow-y-auto">
-      {/* Mobile toggle button */}
-      <div className="md:hidden p-4">
-        <Button
-          variant="ghost"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open sidebar"
-        >
-          <SidebarIcon className="h-5 w-5" />
-        </Button>
+    <div className="relative flex min-h-screen w-full bg-muted/40">
+      {/* --- Desktop Sidebar --- */}
+      {/* This is fixed on the left for medium screens and up */}
+      <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 md:top-16">
+        <div className="flex h-full max-h-screen flex-col gap-2 border-r bg-background">
+          <div className="flex-1 overflow-y-auto">
+            <DashboardNav userRole={userRole} />
+          </div>
+        </div>
+      </aside>
+
+      {/* --- Main Content Area --- */}
+      {/* This is pushed to the right to make space for the desktop sidebar */}
+      <div className="flex flex-col w-full md:pl-64">
+        {/* Mobile Header with Hamburger Icon */}
+        <header className="sticky top-5 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 md:hidden">
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open sidebar"
+          >
+            <SidebarIcon className="h-5 w-5" />
+          </Button>
+        </header>
+
+        {/* The actual page content */}
+        <main className="flex-1 p-1 sm:px-2 sm:py-0 md:p-4">{children}</main>
       </div>
 
-      {/* Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 dark:bg-black/70 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Main layout with sidebar + content */}
-      <div className="flex flex-1 flex-col md:flex-row">
-        {/* Sidebar */}
-        <aside
-          className={`z-50 w-64 bg-white dark:bg-zinc-900 p-4 bg-background/80 backdrop-blur-sm border transition-transform duration-300 ease-in-out md:sticky md:top-0 md:h-screen md:block ${
-            sidebarOpen ? "fixed top-0 left-0 h-full pt-14 translate-x-0" : "hidden md:block"
-          }`}
-        >
-          <DashboardNav userRole={userRole} />
-        </aside>
-
-        {/* Main content */}
-        <main className="flex-1 p-4">{children}</main>
-      </div>
+      {/* --- Mobile Sidebar with Animation --- */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            {/* Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0  z-40 bg-black/50 md:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            {/* Sidebar itself */}
+            <motion.aside
+              key="mobile-sidebar"
+              variants={sidebarVariants}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              transition={{ type: "tween", duration: 0.3, ease: "easeInOut" }}
+              className="fixed inset-y-0 top-16 left-0 z-50 flex h-full w-64 flex-col border-r bg-background md:hidden"
+            >
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="m-2 h-8 w-8 "
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close Menu</span>
+                </Button>
+              <div className="flex-1 overflow-y-auto">
+                <DashboardNav userRole={userRole} />
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
     </div>
-  )
+  );
 }

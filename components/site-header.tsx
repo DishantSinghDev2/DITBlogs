@@ -17,14 +17,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useSiteConfig } from "@/components/providers/site-config-provider"
 import { useTheme } from "next-themes"
 
 export function SiteHeader() {
   const pathname = usePathname()
   const { data: session, status } = useSession()
   const { theme, setTheme } = useTheme()
-  const { siteConfig, loading } = useSiteConfig()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -71,21 +69,17 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`sticky top-0 z-[60] w-full ${isScrolled ? "bg-background/80 backdrop-blur-sm border-b" : "bg-background"
+      className={`sticky top-0 z-[60] w-full border-b ${isScrolled ? "bg-background/80 backdrop-blur-sm " : "bg-background"
         } transition-all duration-200`}
     >
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center space-x-2">
-            {siteConfig?.logo_url ? (
               <img
                 src={"/placeholder.svg"}
                 alt={"DITBlogs"}
                 className="h-8 w-auto"
               />
-            ) : (
-              <span className="text-xl font-bold">DITBlogs</span>
-            )}
           </Link>
 
           <nav className="hidden md:flex gap-6">
@@ -177,7 +171,7 @@ export function SiteHeader() {
       {/* Mobile menu with Framer Motion */}
       {isMobileMenuOpen && (
         <motion.div
-          className="md:hidden fixed top-0 left-0 z-50 w-full h-full bg-background/80 backdrop-blur-sm flex items-center justify-center"
+          className="md:hidden fixed top-0 left-0 z-[70] w-full h-full bg-background/80 backdrop-blur-sm flex items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

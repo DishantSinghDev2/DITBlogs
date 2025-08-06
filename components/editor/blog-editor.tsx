@@ -465,7 +465,7 @@ export function BlogEditor({ organizationId, post }: {
 
       console.log("Submitting:", finalValues); // Debug log
 
-      const response = await fetch("/api/posts", {
+      const response = await fetch(post?.id ? `/api/posts/${post.id}` : "/api/posts", {
         method: post?.id ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",

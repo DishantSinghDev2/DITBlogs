@@ -20,8 +20,8 @@ export function DraftPosts({ posts }: DraftPostsProps) {
         </div>
         <Button asChild size="sm">
           <Link href="/dashboard/editor">
-            <PenTool className="mr-2 h-4 w-4" />
-            New Post
+            <PenTool className="mr-1 h-4 w-4" />
+            New
           </Link>
         </Button>
       </CardHeader>

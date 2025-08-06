@@ -3,7 +3,6 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Analytics } from "@/components/analytics"
 import { ThemeProvider } from "@/components/theme-provider"
-import { SiteConfigProvider } from "@/components/providers/site-config-provider"
 import { AuthProvider } from "@/components/providers/auth-provider"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
@@ -58,7 +57,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <SiteConfigProvider>
             <AuthProvider>
               <div className="relative flex min-h-screen flex-col container mx-auto px-4">
                 <SiteHeader />
@@ -70,7 +68,6 @@ export default function RootLayout({
               <Analytics />
               <Toaster />
             </AuthProvider>
-          </SiteConfigProvider>
         </ThemeProvider>
       </body>
     </html>

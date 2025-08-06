@@ -1,9 +1,9 @@
+// dashboard/settings/profile
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { DashboardShell } from "@/components/dashboard/dashboard-shell-child"
 import { UserSettings } from "@/components/dashboard/user-settings"
 import { getUserById } from "@/lib/api/user"
 
@@ -21,9 +21,9 @@ export default async function SettingsPage() {
   }
 
   return (
-    <DashboardShell>
+    <div className="space-y-4">
       <DashboardHeader heading="Settings" text="Manage your account settings and preferences." />
       <UserSettings user={user} />
-    </DashboardShell>
+    </div>
   )
 }

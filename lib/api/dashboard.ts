@@ -1,78 +1,101 @@
-import { db } from "@/lib/db"
-import { cache } from "react"
+import { db } from "@/lib/db";
+import { cache } from "react";
 
-export const getUserStats = cache(async (userId: string) => {
+/**
+ * Fetches key statistics for a given organization.
+ */
+export const getUserStats = cache(async (organizationId: string) => {
+  if (!organizationId) return { postCount: 0, viewCount: 0, commentCount: 0, draftCount: 0 };
+
   const [postCount, viewCount, commentCount, draftCount] = await Promise.all([
+    // Count all posts in the organization
     db.post.count({
-      where: {
-        authorId: userId,
-        published: true,
-      },
+      where: { organizationId },
     }),
+    // Sum all views for posts within the organization
     db.postView.count({
-      where: {
-        post: {
-          authorId: userId,
-        },
-      },
+      where: { post: { organizationId } },
     }),
+    // Sum all comments for posts within the organization
     db.comment.count({
-      where: {
-        post: {
-          authorId: userId,
-        },
-      },
+      where: { post: { organizationId } },
     }),
     db.post.count({
-      where: {
-        authorId: userId,
-        published: false,
-      },
-    }),
-  ])
+      where: { organizationId, },
+    })
+  ]);
 
-  return {
-    postCount,
-    viewCount,
-    commentCount,
-    draftCount,
-  }
-})
+  return { postCount, viewCount, commentCount, draftCount };
+});
 
-export const getRecentPosts = cache(async (userId: string) => {
-  return db.post.findMany({
+/**
+ * Fetches the 5 most recent published posts for an organization.
+ */
+export const getRecentPosts = cache(async (organizationId: string) => {
+  if (!organizationId) return [];
+
+  const posts = await db.post.findMany({
     where: {
-      authorId: userId,
+      organizationId,
       published: true,
     },
-    orderBy: {
-      createdAt: "desc",
-    },
-    take: 5,
-    include: {
-      category: true,
-      _count: {
+    // FIX: Update the 'select' and 'include' clauses
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      // The component uses publishedAt, not createdAt for this display
+      publishedAt: true, 
+      // Include the category relation to get its name
+      category: {
         select: {
-          comments: true,
-          views: true,
+          name: true,
         },
       },
+      // Select the count of both views and comments
+      _count: {
+        select: {
+          views: true,
+          comments: true,
+        },
+      },
+      createdAt: true
     },
-  })
-})
+    orderBy: {
+      // Order by the date it was published
+      publishedAt: "desc",
+    },
+    take: 5,
+  });
 
-export const getDraftPosts = cache(async (userId: string) => {
-  return db.post.findMany({
+  return posts;
+});
+
+/**
+ * Fetches the 5 most recent draft posts for an organization.
+ */
+export const getDraftPosts = cache(async (organizationId: string) => {
+  if (!organizationId) return [];
+
+  const posts = await db.post.findMany({
     where: {
-      authorId: userId,
+      organizationId,
       published: false,
+    },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      updatedAt: true,
+      author: {
+        select: { name: true, image: true },
+      },
     },
     orderBy: {
       updatedAt: "desc",
     },
     take: 5,
-    include: {
-      category: true,
-    },
-  })
-})
+  });
+
+  return posts;
+});

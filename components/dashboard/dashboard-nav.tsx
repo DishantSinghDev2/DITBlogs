@@ -38,7 +38,7 @@ const navGroups = [
       },
       {
         title: "Create Post",
-        href: "/editor", // A dedicated editor page is cleaner
+        href: "/dashboard/editor", // A dedicated editor page is cleaner
         icon: PenSquare,
         roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
       },

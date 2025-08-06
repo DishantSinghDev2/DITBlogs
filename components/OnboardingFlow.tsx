@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Check, ArrowRight, PenSquare, Users, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 interface Organization {
   id: string;
@@ -26,6 +27,7 @@ export default function OnboardingFlow() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrg, setSelectedOrg] = useState("");
+  const { data: session, update } = useSession(); // <-- Use the hook to get the update function
 
   // Fetch organizations when the component loads
   useEffect(() => {
@@ -61,10 +63,10 @@ export default function OnboardingFlow() {
             body: JSON.stringify({ organizationId: selectedOrg, message }),
         });
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to send request.');
-        }
+        if (!response.ok) throw new Error('Failed to send request.');
+
+        // FIX: Manually trigger a session update
+        await update();
 
         setShowSuccess(true);
         setTimeout(() => router.push("/dashboard"), 2000);
@@ -91,10 +93,12 @@ export default function OnboardingFlow() {
             body: JSON.stringify({ orgName, website }),
         });
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.message || 'Failed to create organization.');
-        }
+        if (!response.ok) throw new Error('Failed to create organization.');
+        
+        // FIX: Manually trigger a session update
+        await update();
+
+        // Now that the session is updated, the redirect will work.
         router.push("/dashboard");
     } catch (err: any) {
         setError(err.message);

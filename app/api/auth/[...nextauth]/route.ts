@@ -160,11 +160,11 @@ export const authOptions: NextAuthOptions = {
 
     async session({ token, session }) {
       if (token) {
-        session.user.id = token.id;
-        session.user.name = token.name;
-        session.user.email = token.email;
-        session.user.image = token.picture;
-        session.user.role = token.role; // Also passing it to the client-side session
+        session.user.id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
+        session.user.image = token.picture as string;
+        session.user.role = token.role as string; // Also passing it to the client-side session
         session.user.onboardingCompleted = token.onboardingCompleted as boolean;
       }
       return session;

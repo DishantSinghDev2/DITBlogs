@@ -1,8 +1,9 @@
 import { db } from "@/lib/db";
-import { redis } from "@/lib/redis"; // Import the Redis client
+import { redis } from "@/lib/redis";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
+import { UserRole } from "@prisma/client";
 
 const CACHE_KEY = "organizations:list";
 
@@ -14,19 +15,14 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-     // --- FIX: ADD THIS GUARD CLAUSE ---
-    // Check if the user already owns an organization before trying to create one.
+    // Guard clause to prevent creating multiple orgs
     const existingOrg = await db.organization.findUnique({
-      where: {
-        ownerId: session.user.id,
-      },
+      where: { ownerId: session.user.id },
     });
 
     if (existingOrg) {
-      // Return a 409 Conflict error, as this action cannot be performed again.
       return new NextResponse("User has already created an organization.", { status: 409 });
     }
-    // --- END OF FIX ---
 
     const body = await req.json();
     const { orgName, website } = body;
@@ -35,33 +31,46 @@ export async function POST(req: Request) {
       return new NextResponse("Missing required fields", { status: 400 });
     }
 
-    // Use a transaction to ensure both operations succeed or fail together
-    const [newOrganization] = await db.$transaction([
-      db.organization.create({
+    // FIX: Use an interactive transaction to handle dependent operations
+    const newOrganization = await db.$transaction(async (tx) => {
+      // Step 1: Create the organization and get its result.
+      const organization = await tx.organization.create({
         data: {
           name: orgName,
           website,
           ownerId: session.user.id,
         },
-      }),
-      db.user.update({
+      });
+
+      // Step 2: Use the new organization's ID to update the user.
+      // The user who creates the org is automatically the ORG_ADMIN and a member.
+      await tx.user.update({
         where: { id: session.user.id },
-        data: { onboardingCompleted: true },
-      }),
-    ]);
-    
-    // After successful creation, invalidate the cache
+        data: {
+          onboardingCompleted: true,
+          // Now you can safely reference the ID from the previous step.
+          organizationId: organization.id,
+          role: UserRole.ORG_ADMIN, // Assign the admin role
+        },
+      });
+
+      // Step 3: Return the created organization from the transaction block.
+      return organization;
+    });
+
+    // After the transaction is successful, invalidate the cache
     try {
-      console.log("CACHE INVALIDATION: Deleting organizations list");
       await redis.del(CACHE_KEY);
     } catch (error) {
       console.error("REDIS ERROR on DEL:", error);
-      // Don't fail the request if Redis is down, just log the error
     }
 
     return NextResponse.json(newOrganization, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error("[ONBOARDING_ORGANIZATION_POST]", error);
+    if (error.code === 'P2002') {
+        return new NextResponse("An organization for this user already exists.", { status: 409 });
+    }
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

@@ -57,7 +57,7 @@ export const getUserRoleInOrg = cache(
         role: true,
       },
     });
-    
+
 
     return user?.role || null;
   }
@@ -71,19 +71,24 @@ export const getUserRoleInOrg = cache(
  * const canEdit = await canUserPerformAction(userId, 'post:edit', postId);
  * const canManageMembers = await canUserPerformAction(userId, 'org:manage_members', orgId);
  */
+
 export const canUserPerformAction = cache(
   async (
     userId: string,
     action: "post:create" | "post:edit" | "post:delete" | "org:manage_members" | "org:edit_settings",
-    resourceId: string // This will be either organizationId or postId
+    resourceId: string // This will be organizationId for 'post:create' or postId for others
   ): Promise<boolean> => {
     if (!userId || !action || !resourceId) return false;
 
     let organizationId: string | null = null;
     let postAuthorId: string | null = null;
 
-    // 1. Determine the relevant Organization ID from the resource
-    if (action.startsWith("post:")) {
+    // --- FIX: Reworked logic to handle different actions ---
+    if (action === "post:create") {
+      // For creating a post, the resourceId IS the organizationId.
+      organizationId = resourceId;
+    } else if (action === "post:edit" || action === "post:delete") {
+      // For editing/deleting, we need to find the post's organization.
       const post = await db.post.findUnique({
         where: { id: resourceId },
         select: { organizationId: true, authorId: true },
@@ -92,10 +97,17 @@ export const canUserPerformAction = cache(
       organizationId = post.organizationId;
       postAuthorId = post.authorId;
     } else if (action.startsWith("org:")) {
+      // For organization actions, the resourceId IS the organizationId.
       organizationId = resourceId;
     }
 
-    if (!organizationId) return false;
+    // If we couldn't determine an organization, deny permission.
+    if (!organizationId) {
+      console.error(`Could not determine organizationId for action: ${action}`);
+      return false;
+    }
+
+    // --- The rest of the logic remains the same and is now correct ---
 
     // 2. Get the user's role within that specific organization
     const user = await db.user.findFirst({
@@ -116,7 +128,6 @@ export const canUserPerformAction = cache(
         "org:edit_settings",
       ],
       EDITOR: ["post:create", "post:edit", "post:delete"],
-      // Writers can create posts and edit/delete *their own* posts.
       WRITER: ["post:create", "post:edit", "post:delete"],
     };
     
@@ -126,7 +137,7 @@ export const canUserPerformAction = cache(
         if (userRole === 'WRITER' && (action === 'post:edit' || action === 'post:delete')) {
             return postAuthorId === userId;
         }
-        // Admins and Editors have full access
+        // Admins and Editors have full access for their respective permissions
         return true;
     }
 

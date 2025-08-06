@@ -52,7 +52,7 @@ export function PostsTable({ posts, pagination }: PostsTableProps) {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`/api/posts?id=${postToDelete}`, {
+      const response = await fetch(`/api/posts/${postToDelete}`, {
         method: "DELETE",
       })
 
@@ -83,7 +83,7 @@ export function PostsTable({ posts, pagination }: PostsTableProps) {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`/api/posts`, {
+      const response = await fetch(`/api/posts/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -119,7 +119,7 @@ export function PostsTable({ posts, pagination }: PostsTableProps) {
     setIsLoading(true)
 
     try {
-      const response = await fetch(`/api/posts`, {
+      const response = await fetch(`/api/posts/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

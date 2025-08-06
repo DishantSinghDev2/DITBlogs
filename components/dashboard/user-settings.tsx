@@ -17,21 +17,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { toast } from "@/hooks/use-toast"
 import { getInitials } from "@/lib/utils"
 
+// FIX: Remove 'website' from the profile schema
 const profileFormSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
+  name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   bio: z.string().optional(),
-  website: z.string().url({ message: "Please enter a valid URL." }).optional().or(z.literal("")),
-})
+});
 
+// FIX: Remove irrelevant notification options
 const notificationsFormSchema = z.object({
   emailNotifications: z.boolean(),
   marketingEmails: z.boolean(),
   newComment: z.boolean(),
-  newFollower: z.boolean(),
-  newPost: z.boolean(),
-})
+});
+
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>
 type NotificationsFormValues = z.infer<typeof notificationsFormSchema>
@@ -43,13 +41,11 @@ interface UserSettingsProps {
     email: string
     image: string | null
     bio: string | null
-    website: string | null
     emailVerified: Date | null
     notificationSettings: {
       emailNotifications: boolean
       marketingEmails: boolean
       newComment: boolean
-      newFollower: boolean
       newPost: boolean
     }
   }
@@ -62,12 +58,10 @@ export function UserSettings({ user }: UserSettingsProps) {
   // Profile form
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
-    defaultValues: {
-      name: user.name || "",
-      bio: user.bio || "",
-      website: user.website || "",
-    },
-  })
+    // FIX: Remove default value for 'website'
+    defaultValues: { name: user.name || "", bio: user.bio || "" },
+  });
+
 
   // Notifications form
   const notificationsForm = useForm<NotificationsFormValues>({
@@ -76,8 +70,6 @@ export function UserSettings({ user }: UserSettingsProps) {
       emailNotifications: user.notificationSettings?.emailNotifications ?? true,
       marketingEmails: user.notificationSettings?.marketingEmails ?? false,
       newComment: user.notificationSettings?.newComment ?? true,
-      newFollower: user.notificationSettings?.newFollower ?? true,
-      newPost: user.notificationSettings?.newPost ?? true,
     },
   })
 
@@ -106,8 +98,7 @@ export function UserSettings({ user }: UserSettingsProps) {
       const userData = {
         ...user,
         name: data.name,
-        bio: data.bio,
-        website: data.website,
+        bio: data.bio
       }
       localStorage.setItem("user-profile", JSON.stringify(userData))
 
@@ -223,20 +214,6 @@ export function UserSettings({ user }: UserSettingsProps) {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={profileForm.control}
-                  name="website"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Website</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://example.com" {...field} value={field.value || ""} />
-                      </FormControl>
-                      <FormDescription>Your personal website or portfolio.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <Button type="submit" disabled={isUpdating}>
                   {isUpdating ? "Updating..." : "Update profile"}
                 </Button>
@@ -300,36 +277,6 @@ export function UserSettings({ user }: UserSettingsProps) {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={notificationsForm.control}
-                  name="newFollower"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">New Followers</FormLabel>
-                        <FormDescription>When someone follows you.</FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={notificationsForm.control}
-                  name="newPost"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">New Posts</FormLabel>
-                        <FormDescription>When authors you follow publish new posts.</FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
                 <Button type="submit" disabled={isUpdating}>
                   {isUpdating ? "Updating..." : "Save preferences"}
                 </Button>
@@ -350,24 +297,24 @@ export function UserSettings({ user }: UserSettingsProps) {
               <h3 className="font-medium">Email Address</h3>
               <p className="text-sm text-muted-foreground">{user.email}</p>
               <p className="text-sm text-muted-foreground">{user.emailVerified ? "Verified" : "Not verified"}</p>
-              {!user.emailVerified && (
-                <Button variant="outline" size="sm">
-                  Resend verification email
-                </Button>
-              )}
+
             </div>
             <div className="space-y-2">
               <h3 className="font-medium">Password</h3>
-              <p className="text-sm text-muted-foreground">Change your password to secure your account.</p>
+              <p className="text-sm text-muted-foreground">Passwords are managed by WhatsYour.Info.</p>
               <Button variant="outline" size="sm">
-                Change password
+                <a target="_blank" href="https://whatsyour.info/settings">
+                  WYI Settings
+                </a>
               </Button>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium text-destructive">Danger Zone</h3>
-              <p className="text-sm text-muted-foreground">Permanently delete your account and all of your content.</p>
-              <Button variant="destructive" size="sm">
-                Delete account
+              <p className="text-sm text-muted-foreground">To delete this account please visit WhatsYour.Info - Profile - Account Settings.</p>
+              <Button variant="outline" size="sm">
+                <a target="_blank" href="https://whatsyour.info/profile">
+                  WYI Profile
+                </a>
               </Button>
             </div>
           </CardContent>

@@ -1,11 +1,11 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { formatDistanceToNow } from "date-fns"
-import { MoreHorizontal, Edit, Trash2, Search, X } from "lucide-react"
+import type React from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
+import { MoreHorizontal, Edit, Trash2, Search, X } from "lucide-react";
+import { UserRole } from "@prisma/client";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -52,110 +52,83 @@ interface UsersTableProps {
 }
 
 export function UsersTable({ users, pagination }: UsersTableProps) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [userToDelete, setUserToDelete] = useState<string | null>(null)
-  const [userToEdit, setUserToEdit] = useState<any | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [roleFilter, setRoleFilter] = useState("")
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<string | null>(null);
+  const [userToEdit, setUserToEdit] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
 
-  async function handleDeleteUser() {
-    if (!userToDelete) return
-
-    setIsLoading(true)
+  async function handleRemoveMember() {
+    if (!userToRemove) return;
+    setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/admin/users?id=${userToDelete}`, {
+      // FIX: Call the correct, scoped API endpoint
+      const response = await fetch(`/api/organization/members/${userToRemove}`, {
         method: "DELETE",
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to delete user")
+        throw new Error("Failed to remove member");
       }
-
-      toast({
-        title: "User deleted",
-        description: "The user has been deleted successfully.",
-      })
-
-      router.refresh()
+      toast({ title: "Member Removed", description: "The user has been removed from the organization." });
+      router.refresh();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete user. Please try again.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to remove member.", variant: "destructive" });
     } finally {
-      setIsLoading(false)
-      setIsDeleteDialogOpen(false)
-      setUserToDelete(null)
+      setIsLoading(false);
+      setIsRemoveDialogOpen(false);
+      setUserToRemove(null);
     }
   }
 
-  async function handleEditUser(e: React.FormEvent) {
-    e.preventDefault()
-    if (!userToEdit) return
-
-    setIsLoading(true)
+  async function handleEditRole(e: React.FormEvent) {
+    e.preventDefault();
+    if (!userToEdit) return;
+    setIsLoading(true);
 
     try {
-      const response = await fetch("/api/admin/users", {
+      // FIX: Call the correct API and only send the role
+      const response = await fetch(`/api/organization/members/${userToEdit.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: userToEdit.id,
-          name: userToEdit.name,
-          email: userToEdit.email,
-          role: userToEdit.role,
-        }),
-      })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: userToEdit.role }),
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to update user")
+        throw new Error("Failed to update role");
       }
-
-      toast({
-        title: "User updated",
-        description: "The user has been updated successfully.",
-      })
-
-      router.refresh()
+      toast({ title: "Role Updated", description: "The member's role has been updated." });
+      router.refresh();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update user. Please try again.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", description: "Failed to update role.", variant: "destructive" });
     } finally {
-      setIsLoading(false)
-      setIsEditDialogOpen(false)
-      setUserToEdit(null)
+      setIsLoading(false);
+      setIsEditDialogOpen(false);
+      setUserToEdit(null);
     }
   }
-
+  
+  // FIX: Update navigation paths to point to /dashboard/members
   function handleSearch(e: React.FormEvent) {
-    e.preventDefault()
-    router.push(
-      `/dashboard/admin/users?search=${encodeURIComponent(searchQuery)}${roleFilter ? `&role=${roleFilter}` : ""}`,
-    )
+    e.preventDefault();
+    router.push(`/dashboard/members?search=${encodeURIComponent(searchQuery)}${roleFilter ? `&role=${roleFilter}` : ""}`);
   }
 
   function handleRoleFilterChange(value: string) {
-    setRoleFilter(value)
-    router.push(
-      `/dashboard/admin/users?${searchQuery ? `search=${encodeURIComponent(searchQuery)}&` : ""}${value ? `role=${value}` : ""}`,
-    )
+    setRoleFilter(value);
+    const newRole = value === 'all' ? '' : value;
+    router.push(`/dashboard/members?${searchQuery ? `search=${encodeURIComponent(searchQuery)}&` : ""}${newRole ? `role=${newRole}` : ""}`);
   }
 
   function clearFilters() {
-    setSearchQuery("")
-    setRoleFilter("")
-    router.push("/dashboard/admin/users")
+    setSearchQuery("");
+    setRoleFilter("");
+    router.push("/dashboard/members");
   }
 
   return (
@@ -180,10 +153,9 @@ export function UsersTable({ users, pagination }: UsersTableProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="editor">Editor</SelectItem>
-              <SelectItem value="writer">Writer</SelectItem>
-              <SelectItem value="user">User</SelectItem>
+              <SelectItem value={UserRole.ORG_ADMIN}>Admin</SelectItem>
+              <SelectItem value={UserRole.EDITOR}>Editor</SelectItem>
+              <SelectItem value={UserRole.WRITER}>Writer</SelectItem>
             </SelectContent>
           </Select>
           {(searchQuery || roleFilter) && (
@@ -256,38 +228,20 @@ export function UsersTable({ users, pagination }: UsersTableProps) {
                     })}
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setUserToEdit(user)
-                            setIsEditDialogOpen(true)
-                          }}
-                        >
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setUserToDelete(user.id)
-                            setIsDeleteDialogOpen(true)
-                          }}
-                          className="text-red-600"
-                          disabled={user.role === "admin"}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => { setUserToEdit(user); setIsEditDialogOpen(true); }} disabled={user.role === 'ORG_ADMIN'}>
+                                    <Edit className="mr-2 h-4 w-4" /> Edit Role
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setUserToRemove(user.id); setIsRemoveDialogOpen(true);}} className="text-red-600" disabled={user.role === 'ORG_ADMIN'}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Remove Member
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
                 </TableRow>
               ))
             )}
@@ -307,81 +261,48 @@ export function UsersTable({ users, pagination }: UsersTableProps) {
         />
       )}
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+     {/* FIX: Update Delete Dialog to "Remove" Dialog */}
+      <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>Remove this member?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user and remove their data from our
-              servers.
+              This will remove the user from your organization. They will lose their role and access. This action can be reversed by re-inviting them.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteUser} disabled={isLoading}>
-              {isLoading ? "Deleting..." : "Delete"}
+            <AlertDialogAction onClick={handleRemoveMember} disabled={isLoading}>
+              {isLoading ? "Removing..." : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
+      
+      {/* FIX: Simplify Edit Dialog to only manage roles */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>Update user information and role.</DialogDescription>
+            <DialogTitle>Edit Member Role</DialogTitle>
+            <DialogDescription>Change the role for {userToEdit?.name}.</DialogDescription>
           </DialogHeader>
           {userToEdit && (
-            <form onSubmit={handleEditUser} className="space-y-4">
+            <form onSubmit={handleEditRole} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium">
-                  Name
-                </label>
-                <Input
-                  id="name"
-                  value={userToEdit.name}
-                  onChange={(e) => setUserToEdit({ ...userToEdit, name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={userToEdit.email}
-                  onChange={(e) => setUserToEdit({ ...userToEdit, email: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="role" className="text-sm font-medium">
-                  Role
-                </label>
-                <Select
-                  value={userToEdit.role}
-                  onValueChange={(value) => setUserToEdit({ ...userToEdit, role: value })}
-                >
+                <label htmlFor="role" className="text-sm font-medium">Role</label>
+                <Select value={userToEdit.role} onValueChange={(value) => setUserToEdit({ ...userToEdit, role: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="editor">Editor</SelectItem>
-                    <SelectItem value="writer">Writer</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value={UserRole.EDITOR}>Editor</SelectItem>
+                    <SelectItem value={UserRole.WRITER}>Writer</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isLoading}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? "Saving..." : "Save changes"}
-                </Button>
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isLoading}>{isLoading ? "Saving..." : "Save Role"}</Button>
               </DialogFooter>
             </form>
           )}
