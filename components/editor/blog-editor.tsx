@@ -118,6 +118,7 @@ const postSchema = z.object({
   content: z.string().min(1, "Content is required"), // Keep this, but content comes from editor
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
+  organizationId: z.string().min(1, "Organization ID is required."),
 })
 
 // --- Toolbar Components (Keep as is - no changes needed) ---
@@ -228,7 +229,11 @@ const MobileToolbarContent = ({
   </>
 )
 // --- Main Editor Component ---
-export function BlogEditor({ post }: { post?: z.infer<typeof postSchema> }) {
+export function BlogEditor({ organizationId, post }: {
+  organizationId: string;
+  post?: z.infer<typeof postSchema>
+}) {
+
   const router = useRouter()
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -267,6 +272,7 @@ export function BlogEditor({ post }: { post?: z.infer<typeof postSchema> }) {
       metaTitle: post?.metaTitle || post?.title || "",
       metaDescription: post?.metaDescription || post?.excerpt || "",
       content: post?.content || defaultContent,
+      organizationId: post?.organizationId || organizationId,
     },
     mode: 'onChange', // Needed for isDirty state to update promptly
   })
@@ -442,7 +448,11 @@ export function BlogEditor({ post }: { post?: z.infer<typeof postSchema> }) {
     setIsSubmitting(true)
     try {
       // Final check to ensure editor content is included
-      const finalValues = { ...values, content: editor?.getHTML() || values.content };
+      const finalValues = {
+        ...values,
+        content: editor?.getHTML() || values.content,
+        organizationId: organizationId, // Ensure it's explicitly passed
+      };
 
        // Add default meta title/description if empty
        if (!finalValues.metaTitle) {

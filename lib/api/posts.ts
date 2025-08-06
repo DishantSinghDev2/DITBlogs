@@ -270,44 +270,6 @@ export const incrementPostView = async (postId: string) => {
   return true
 }
 
-export const getHomePageConfig = cache(async () => {
-  // Check cache
-  const cachedConfig = await redis.get("home_page_config")
-  if (cachedConfig) {
-    return cachedConfig && typeof cachedConfig === "string" ? JSON.parse(cachedConfig) : null
-  }
-
-  const config = await db.siteConfig.findFirst({
-    where: { key: "home_page_config" },
-    select: {
-      value: true,
-    },
-  })
-
-  const parsedConfig = config && typeof config.value === "string" ? JSON.parse(config.value) : null
-
-  if (parsedConfig) {
-    // Cache config
-    await redis.set("home_page_config", JSON.stringify(parsedConfig), {
-      ex: 60 * 60, // 1 hour
-    })
-  }
-
-  return parsedConfig || { hero: {
-    title: "Welcome to Our Blog",
-    subtitle: "Discover the latest articles and insights",
-    showFeaturedPost: true,
-  }, featuredSection: {
-    title: "Featured Posts",
-    subtitle: "Explore our top articles",
-    showAuthor: true,
-    showDate: true,
-  }, categories: {
-    title: "Categories",
-    showPostCount: true,
-  }, showNewsletter: false }
-})
-
 export const getFeaturedPosts = cache(async (limit = 6) => {
   const { posts } = await getAllPosts({ featured: true, limit })
   return posts

@@ -14,6 +14,7 @@ declare module "next-auth" {
       email: string;
       role: string;
       image: string;
+      onboardingCompleted: boolean;
     };
   }
 }
@@ -118,15 +119,12 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.WYI_CLIENT_SECRET,
       async profile(profile: UserProfile, tokens) {
         return {
-          ...tokens,
           id: profile._id, // Map _id from API to id for the adapter
           name: `${profile.firstName} ${profile.lastName}`, // Combine first and last name
           email: profile.email,
           image: profile.avatar, // Map avatar from API to image for the adapter
-          isProUser: profile.isProUser,
           emailVerified: profile.emailVerified,
-          bio: profile.bio,
-          role: 'admin'
+          bio: profile.bio
         };
       },
     },
@@ -156,6 +154,7 @@ export const authOptions: NextAuthOptions = {
         email: dbUser.email,
         picture: dbUser.image,
         role: dbUser.role, // <-- THIS IS THE KEY
+        onboardingCompleted: dbUser?.onboardingCompleted || false
       };
     },
 
@@ -166,6 +165,7 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email;
         session.user.image = token.picture;
         session.user.role = token.role; // Also passing it to the client-side session
+        session.user.onboardingCompleted = token.onboardingCompleted as boolean;
       }
       return session;
     },

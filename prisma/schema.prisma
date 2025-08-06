@@ -59,66 +59,68 @@ model Session {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  name             String?
-  email            String?   @unique
-  emailVerified    Boolean?
-  image            String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  role             UserRole? // Role within the organization
-  membershipStatus MembershipStatus @default(PENDING)
+  id                  String           @id @default(cuid())
+  name                String?
+  email               String?          @unique
+  emailVerified       Boolean?
+  image               String?
+  // ADDED: Bio field for author information
+  onboardingCompleted Boolean?
+  bio                 String?          @db.Text
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  role                UserRole?
+  membershipStatus    MembershipStatus @default(PENDING)
 
-  // A user can be part of one organization
   organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organization   Organization? @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
+
+  ownedOrganization Organization? @relation("OrganizationOwner")
 
   accounts          Account[]
   sessions          Session[]
-  posts             Post[] // Posts authored by the user
+  posts             Post[]
   comments          Comment[]
   membershipRequest MembershipRequest[] @relation("UserRequests")
+  // ADDED: Relation to the Bookmark model
+  bookmarks         Bookmark[]
 
   @@index([email])
   @@index([organizationId])
 }
 
 model Organization {
-  id                 String   @id @default(cuid())
-  name               String
-  website            String // The website URL to connect for blogs
-  apiKey             String   @unique @default(cuid()) // For API access
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  
-  // The user who created/owns the organization
-  ownerId            String   @unique
-  owner              User     @relation(fields: [ownerId], references: [id])
-  
-  // Subscription plan details
-  plan               Plan     @default(FREE)
-  monthlyPostViews   Int      @default(0) // Counter for monthly views, reset via a cron job
-  
-  members            User[]
+  id               String   @id @default(cuid())
+  name             String
+  website          String
+  apiKey           String   @unique @default(cuid())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  plan             Plan     @default(FREE)
+  monthlyPostViews Int      @default(0)
+
+  ownerId String @unique
+  owner   User   @relation("OrganizationOwner", fields: [ownerId], references: [id])
+
+  members            User[]              @relation("OrganizationMembers")
   posts              Post[]
   membershipRequests MembershipRequest[] @relation("OrgRequests")
 }
 
 model MembershipRequest {
-  id             String           @id @default(cuid())
-  message        String?          @db.Text
-  status         MembershipStatus @default(PENDING)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id        String           @id @default(cuid())
+  message   String?          @db.Text
+  status    MembershipStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   userId         String
-  user           User             @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
+  user           User         @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
   organizationId String
-  organization   Organization     @relation("OrgRequests", fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation("OrgRequests", fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
 }
-
 
 model VerificationToken {
   identifier String
@@ -132,10 +134,12 @@ model Post {
   id              String    @id @default(cuid())
   title           String
   slug            String    @unique
-  content         Json      // Using JSON for rich text editor content
+  content         Json
   excerpt         String?   @db.Text
   featuredImage   String?
   published       Boolean   @default(false)
+  // ADDED: Field for featured posts
+  featured        Boolean   @default(false)
   metaTitle       String?
   metaDescription String?   @db.Text
   createdAt       DateTime  @default(now())
@@ -143,17 +147,17 @@ model Post {
   publishedAt     DateTime?
   readingTime     Int?
 
-  // The organization this post belongs to
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  // The user who authored the post
-  authorId   String
-  author     User       @relation(fields: [authorId], references: [id])
-  categoryId String?
-  category   Category?  @relation(fields: [categoryId], references: [id])
-  tags       Tag[]
-  comments   Comment[]
+  authorId       String
+  author         User         @relation(fields: [authorId], references: [id])
+  categoryId     String?
+  category       Category?    @relation(fields: [categoryId], references: [id])
+  tags           Tag[]
+  comments       Comment[]
+  // ADDED: Relations for views and bookmarks
+  views          PostView[]
+  bookmarks      Bookmark[]
 
   @@index([organizationId])
 }
@@ -186,4 +190,33 @@ model Comment {
   parentId String?
   parent   Comment?  @relation("CommentToComment", fields: [parentId], references: [id], onDelete: SetNull)
   replies  Comment[] @relation("CommentToComment")
+}
+
+// ADDED: Model to track views on a post
+model PostView {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  postId    String
+  post      Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  // Optional fields for more detailed analytics
+  sessionId String?
+  userId    String?
+  ip        String?
+
+  @@index([postId])
+}
+
+// ADDED: Model for user bookmarks
+model Bookmark {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
 }

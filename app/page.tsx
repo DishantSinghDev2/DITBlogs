@@ -1,19 +1,19 @@
-import { HomeHero } from "@/components/home/home-hero"
-import { FeaturedPosts } from "@/components/home/featured-posts"
-import { CategoryShowcase } from "@/components/home/category-showcase"
-import { NewsletterCta } from "@/components/home/newsletter-cta"
-import { getHomePageConfig, getFeaturedPosts } from "@/lib/api/posts"
+import { HomeHero } from "@/components/home/home-hero";
+import { HowItWorks } from "@/components/home/how-it-works";
+import { Features } from "@/components/home/features";
+import { Works } from "@/components/home/works";
+import { Reviews } from "@/components/home/reviews";
+import { NewsletterCta } from "@/components/home/newsletter-cta";
 
 export default async function HomePage() {
-  const homeConfig = await getHomePageConfig()
-  const featuredPosts = await getFeaturedPosts()
-
   return (
     <main className="container mx-auto px-4 py-8">
-      <HomeHero config={homeConfig.hero} />
-      <FeaturedPosts posts={featuredPosts} config={homeConfig.featuredSection} />
-      <CategoryShowcase config={homeConfig.categories} />
-      {homeConfig.showNewsletter && <NewsletterCta />}
+      <HomeHero />
+      <HowItWorks />
+      <Features />
+      <Works />
+      <Reviews />
+      <NewsletterCta />
     </main>
-  )
+  );
 }

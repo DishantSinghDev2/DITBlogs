@@ -4,13 +4,14 @@ import { useState, type ReactNode } from "react"
 import { DashboardNav } from "@/components/dashboard/dashboard-nav"
 import { Sidebar as SidebarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { UserRole } from "@prisma/client"
 
 export function DashboardShell({
   userRole,
   children,
 }: {
-  userRole: string
-  children: ReactNode
+  userRole: UserRole | null; // Use the specific enum type
+  children: ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 

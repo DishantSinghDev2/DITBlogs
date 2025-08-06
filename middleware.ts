@@ -1,27 +1,42 @@
+import { getToken } from "next-auth/jwt";
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
-export const middleware = withAuth(
-    function middleware(req) {
-        const { role } = req.nextauth.token || {};
-        console.log(role)
+export default withAuth(
+  async function middleware(req) {
+    const token = await getToken({ req });
+    const isAuthenticated = !!token;
+    const isOnboardingCompleted = token?.onboardingCompleted as boolean;
 
-        // Allow only 'editor' and 'admin' roles to access /dashboard pages
-        if (req.nextUrl.pathname.startsWith("/dashboard")) {
-            if (role !== "editor" && role !== "admin") {
-                return NextResponse.redirect(new URL("/", req.url));
-            }
-        }
+    const onboardingUrl = new URL("/onboarding", req.url);
+    const dashboardUrl = new URL("/dashboard", req.url);
 
-        return NextResponse.next();
-    },
-    {
-        callbacks: {
-            authorized: ({ token }) => !!token, // Ensure the user is authenticated
-        },
+    // If the user is authenticated
+    if (isAuthenticated) {
+      // If onboarding is not complete and they are trying to access any page other than onboarding
+      if (!isOnboardingCompleted && req.nextUrl.pathname !== "/onboarding") {
+        return NextResponse.redirect(onboardingUrl);
+      }
+
+      // If onboarding IS complete and they are trying to access the onboarding page
+      if (isOnboardingCompleted && req.nextUrl.pathname === "/onboarding") {
+        return NextResponse.redirect(dashboardUrl);
+      }
     }
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token, // Protect all matched routes
+    },
+  }
 );
 
+// Matcher to specify which routes the middleware should run on
 export const config = {
-    matcher: ["/dashboard/:path*"], // Apply middleware to /dashboard and its subpaths
+  matcher: [
+    "/dashboard/:path*",
+    "/settings/:path*",
+    "/editor/:path*",
+    "/onboarding",
+  ],
 };
