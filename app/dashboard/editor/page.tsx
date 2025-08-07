@@ -14,7 +14,7 @@ export default async function EditorPage() {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { organizationId: true },
+    select: { organizationId: true, organization: { select: {plan: true} } },
   });
   const orgId = user?.organizationId;
   if (!orgId) redirect("/dashboard");
@@ -35,7 +35,7 @@ export default async function EditorPage() {
         text="Write and publish a new blog post."
       />
       {/* FIX: Pass both organizationId and the fetched drafts */}
-      <BlogEditor organizationId={orgId} drafts={userDrafts} />
+      <BlogEditor organizationId={orgId} drafts={userDrafts} organizationPlan={user.organization?.plan} />
     </DashboardShell>
   );
 }

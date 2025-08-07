@@ -107,10 +107,19 @@ import { AiAssistant } from "./ai-assistant"
 // --- Feature Image Uploader Component ---
 // (Assuming ImageUploader component provided in the prompt is in this path)
 import { ImageUploader } from "./image-uploader" // Adjust path if needed
-import { useDebounce } from "@/hooks/use-debounce";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { X as XIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { format } from "date-fns";
 import { Clock } from "lucide-react";
+import { PLAN_LIMITS } from "@/config/plans"
 
 // --- Zod Schema for Validation ---
 const postSchema = z.object({
@@ -123,6 +132,9 @@ const postSchema = z.object({
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
   organizationId: z.string().min(1, "Organization ID is required."),
+  categoryId: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+
 })
 
 // --- Toolbar Components (Keep as is - no changes needed) ---
@@ -233,10 +245,11 @@ const MobileToolbarContent = ({
   </>
 )
 // --- Main Editor Component ---
-export function BlogEditor({ organizationId, post, drafts }: {
+export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
   organizationId: string;
   post?: any; // For editing a published post
   drafts?: any[]; // For creating a new post
+  organizationPlan: typeof PLAN_LIMITS;
 }) {
 
   const router = useRouter()
@@ -258,9 +271,39 @@ export function BlogEditor({ organizationId, post, drafts }: {
   const [currentDraftId, setCurrentDraftId] = useState<string | null>(post?.id || null);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  // --- NEW: State for categories and tags ---
+  const [categories, setCategories] = useState<any[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>(post?.tags || []);
+  const planLimits = PLAN_LIMITS[organizationPlan]; // You'll need to pass the org's plan to the editor
 
+  useEffect(() => {
+    // Fetch categories for the dropdown
+    const fetchCategories = async () => {
+      const response = await fetch('/api/organization/categories');
+      if (response.ok) setCategories(await response.json());
+    };
+    fetchCategories();
+  }, []);
 
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const newTag = tagInput.trim();
+      if (newTag && !tags.includes(newTag) && tags.length < planLimits.tagsPerPost) {
+        const newTags = [...tags, newTag];
+        setTags(newTags);
+        form.setValue('tags', newTags, { shouldDirty: true });
+      }
+      setTagInput("");
+    }
+  };
 
+  const removeTag = (tagToRemove: string) => {
+    const newTags = tags.filter(tag => tag !== tagToRemove);
+    setTags(newTags);
+    form.setValue('tags', newTags, { shouldDirty: true });
+  };
 
   // --- Function to find first H1 and its text ---
   const findFirstH1Text = (editorInstance: Editor): string | null => {
@@ -676,6 +719,49 @@ export function BlogEditor({ organizationId, post, drafts }: {
               </FormItem>
             )} />
 
+          <Separator />
+
+          {/* --- NEW: Category and Tag Fields --- */}
+          <div className="grid gap-6 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="categoryId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Group this post under a specific category.</FormDescription>
+                </FormItem>
+              )}
+            />
+            <FormItem>
+              <FormLabel>Tags / Keywords</FormLabel>
+              <div className="flex items-center flex-wrap gap-2 rounded-md border">
+                {tags.map(tag => (
+                  <Badge key={tag} variant="secondary">
+                    {tag}
+                    <button type="button" onClick={() => removeTag(tag)} className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                      <XIcon className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  </Badge>
+                ))}
+                <Input
+                  placeholder="Add a tag..."
+                  className="flex-1 border-none shadow-none focus-visible:ring-0"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKeyDown}
+                  disabled={tags.length >= planLimits.tagsPerPost}
+                />
+              </div>
+              <FormDescription>Add up to {planLimits.tagsPerPost} tags. Press Enter or comma to add.</FormDescription>
+            </FormItem>
+          </div>
           <Separator />
 
           {/* --- Tiptap Editor and Toolbar --- */}

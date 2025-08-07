@@ -3,14 +3,12 @@ import type { Metadata } from "next"
 
 import { CategoriesList } from "@/components/categories/categories-list"
 import { CategoriesListSkeleton } from "@/components/categories/categories-list-skeleton"
-import { getSettings } from "@/lib/api/settings"
 import { getAllCategories } from "@/lib/api/categories"
 
 export async function generateMetadata(): Promise<Metadata> {
-  const siteConfig = await getSettings()
 
   return {
-    title: `Categories | ${siteConfig.name}`,
+    title: `Categories`,
     description: "Browse all content categories on our platform",
   }
 }

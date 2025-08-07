@@ -5,7 +5,6 @@ import { notFound } from "next/navigation"
 import { CategoryPosts } from "@/components/categories/category-posts"
 import { CategoryPostsSkeleton } from "@/components/categories/category-posts-skeleton"
 import { getCategoryBySlug } from "@/lib/api/categories"
-import { getSettings } from "@/lib/api/settings"
 
 interface CategoryPageProps {
   params: {
@@ -18,18 +17,17 @@ interface CategoryPageProps {
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const category = await getCategoryBySlug(params.slug)
-  const siteConfig = await getSettings()
   
 
   if (!category) {
     return {
-      title: `Category Not Found | ${siteConfig.name}`,
+      title: `Category Not Found`,
     }
   }
 
 
   return {
-    title: `${category.name} | ${siteConfig.name}`,
+    title: `${category.name}`,
     description: category.description || `Browse all posts in the ${category.name} category`,
   }
 }

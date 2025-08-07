@@ -29,6 +29,7 @@ enum Plan {
   FREE
   GROWTH
   SCALE
+  CUSTOM // Add the new custom/enterprise plan
 }
 
 model Account {
@@ -85,12 +86,12 @@ model User {
   membershipRequest MembershipRequest[] @relation("UserRequests")
   // ADDED: Relation to the Bookmark model
   bookmarks         Bookmark[]
+  notifications     Notification[]      @relation("UserNotifications")
+  // --- FIX: Add the back-relation ---
+  actions           Notification[]      @relation("UserActions")
 
   @@index([email])
   @@index([organizationId])
-  notifications   Notification[] @relation("UserNotifications")
-  // --- FIX: Add the back-relation ---
-  actions         Notification[] @relation("UserActions")
 }
 
 model Organization {
@@ -103,13 +104,16 @@ model Organization {
   plan             Plan     @default(FREE)
   monthlyPostViews Int      @default(0)
 
-  ownerId     String                 @unique
+  ownerId     String       @unique
   subscribers Newsletter[]
-  owner       User                   @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  owner       User         @relation("OrganizationOwner", fields: [ownerId], references: [id])
 
   members            User[]              @relation("OrganizationMembers")
   posts              Post[]
   membershipRequests MembershipRequest[] @relation("OrgRequests")
+  limitWarningSentAt DateTime?
+  categories         Category[]
+  tags               Tag[]
 
   Invite Invite[]
 }
@@ -187,13 +191,43 @@ model Post {
   authorId       String
   author         User         @relation(fields: [authorId], references: [id])
   categoryId     String?
-  category       Category?    @relation(fields: [categoryId], references: [id])
   tags           Tag[]
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   comments       Comment[]
   // ADDED: Relations for views and bookmarks
   views          PostView[]
   bookmarks      Bookmark[]
 
+
+  @@index([organizationId])
+}
+
+// FIX: Modify the Category model to belong to an Organization
+model Category {
+  id          String  @id @default(cuid())
+  name        String
+  slug        String
+  description String?
+  posts       Post[]
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, slug]) // A slug must be unique within an organization
+  @@index([organizationId])
+}
+
+// FIX: Modify the Tag model to belong to an Organization
+model Tag {
+  id    String @id @default(cuid())
+  name  String
+  slug  String
+  posts Post[]
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, name]) // A tag name must be unique within an organization
   @@index([organizationId])
 }
 
@@ -208,24 +242,8 @@ model Newsletter {
   // --- FIX: Add relation to Organization ---
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+
   @@index([organizationId])
-}
-
-
-model Category {
-  id          String  @id @default(cuid())
-  name        String
-  slug        String  @unique
-  description String?
-  posts       Post[]
-}
-
-model Tag {
-  id    String @id @default(cuid())
-  name  String @unique
-  slug  String @unique
-  posts Post[]
 }
 
 model Comment {
@@ -272,7 +290,6 @@ model Bookmark {
   @@index([userId])
 }
 
-
 model Notification {
   id        String   @id @default(cuid())
   type      String
@@ -283,12 +300,12 @@ model Notification {
   relatedId String?
 
   // The user who RECEIVES the notification
-  userId    String
-  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId String
+  user   User   @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
   // --- FIX: The user who PERFORMED the action ---
-  actorId   String
-  actor     User     @relation("UserActions", fields: [actorId], references: [id], onDelete: Cascade)
+  actorId String
+  actor   User   @relation("UserActions", fields: [actorId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([actorId])
