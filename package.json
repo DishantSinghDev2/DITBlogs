@@ -1,5 +1,5 @@
 {
-  "name": "inkpress",
+  "name": "ditblogs",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -61,6 +61,7 @@
     "@tiptap/pm": "latest",
     "@tiptap/react": "latest",
     "@tiptap/starter-kit": "latest",
+    "@upstash/ratelimit": "^2.0.6",
     "@upstash/redis": "latest",
     "autoprefixer": "^10.4.20",
     "bcrypt": "^5.1.1",
