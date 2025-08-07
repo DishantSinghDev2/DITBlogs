@@ -53,7 +53,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
-import { CodeIcon, DollarSign, Save, Sparkles, Upload } from "lucide-react" // Added Upload icon
+import { CodeIcon, DollarSign, Loader2, Save, Sparkles, Upload } from "lucide-react" // Added Upload icon
 
 // --- Tiptap Node ---
 import { ImageUploadNode } from "@/components/tiptap-node/image-upload-node/image-upload-node-extension"
@@ -107,6 +107,10 @@ import { AiAssistant } from "./ai-assistant"
 // --- Feature Image Uploader Component ---
 // (Assuming ImageUploader component provided in the prompt is in this path)
 import { ImageUploader } from "./image-uploader" // Adjust path if needed
+import { useDebounce } from "@/hooks/use-debounce";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { format } from "date-fns";
+import { Clock } from "lucide-react";
 
 // --- Zod Schema for Validation ---
 const postSchema = z.object({
@@ -181,10 +185,10 @@ const MainToolbarContent = ({
       <ToolbarGroup>
         <ImageUploadButton />
         {!isMobile ? <EmbedPopover /> : <EmbedButton onClick={onEmbedClick} />}
-         {!isMobile ? <AdPlaceholderPopover /> : <AdPlaceholderButton onClick={onAdPlaceholderClick} />}
+        {!isMobile ? <AdPlaceholderPopover /> : <AdPlaceholderButton onClick={onAdPlaceholderClick} />}
       </ToolbarGroup>
       <ToolbarGroup>
-         <Button type="button" onClick={() => setShowAiAssistant(true)} aria-label="AI Assistant">
+        <Button type="button" onClick={() => setShowAiAssistant(true)} aria-label="AI Assistant">
           <Sparkles className="h-4 w-4" />
         </Button>
       </ToolbarGroup>
@@ -229,9 +233,10 @@ const MobileToolbarContent = ({
   </>
 )
 // --- Main Editor Component ---
-export function BlogEditor({ organizationId, post }: {
+export function BlogEditor({ organizationId, post, drafts }: {
   organizationId: string;
-  post?: z.infer<typeof postSchema>
+  post?: any; // For editing a published post
+  drafts?: any[]; // For creating a new post
 }) {
 
   const router = useRouter()
@@ -247,6 +252,14 @@ export function BlogEditor({ organizationId, post }: {
   const [showAiAssistant, setShowAiAssistant] = useState(false)
   const [showImageUploader, setShowImageUploader] = useState(false); // <-- State for Image Uploader Modal
   const isSlugManuallyEdited = useRef(false); // <-- Ref to track manual slug edits
+
+  // --- NEW: State for auto-saving and drafts ---
+  const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(drafts && drafts.length > 0 && !post);
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(post?.id || null);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+
 
 
   // --- Function to find first H1 and its text ---
@@ -331,15 +344,15 @@ export function BlogEditor({ organizationId, post }: {
       // --- Auto-update Title from H1 ---
       const firstH1 = findFirstH1Text(editor);
       if (firstH1 !== null) {
-          const currentTitle = form.getValues("title");
-          if(firstH1 !== currentTitle) {
-              form.setValue("title", firstH1, { shouldValidate: true, shouldDirty: true });
-              // Reset slug manual edit flag only if title changes *programmatically*
-              // This allows the slug useEffect to take over if it wasn't manually changed
-              if (!form.formState.dirtyFields.slug) {
-                 isSlugManuallyEdited.current = false;
-              }
+        const currentTitle = form.getValues("title");
+        if (firstH1 !== currentTitle) {
+          form.setValue("title", firstH1, { shouldValidate: true, shouldDirty: true });
+          // Reset slug manual edit flag only if title changes *programmatically*
+          // This allows the slug useEffect to take over if it wasn't manually changed
+          if (!form.formState.dirtyFields.slug) {
+            isSlugManuallyEdited.current = false;
           }
+        }
       } else {
         // Optional: Clear title if H1 is removed? Or keep the last known title?
         // Decide based on desired UX. Let's keep it for now unless explicitly cleared.
@@ -351,56 +364,179 @@ export function BlogEditor({ organizationId, post }: {
     },
   })
 
-    // --- Effect to auto-generate Slug from Title ---
-    useEffect(() => {
-        const subscription = form.watch((value, { name, type }) => {
-            if (name === 'title' && value.title) {
-                // Only update slug if it hasn't been manually edited *since the last title change*
-                if (!isSlugManuallyEdited.current) {
-                    const newSlug = generateSlug(value.title); // Use your utility function
-                    if (newSlug !== form.getValues('slug')) {
-                       form.setValue("slug", newSlug, { shouldValidate: true, shouldDirty: true });
-                    }
-                }
-            }
+
+
+  // --- NEW: True Inactivity-Based Auto-Save Logic ---
+  const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
+  const watchedFormData = form.watch(); // Watch for any changes
+
+  const handleAutoSave = useCallback(async () => {
+    // This function now contains the actual save logic
+    setSaveStatus('saving');
+
+    const currentValues = form.getValues();
+    const content = editor?.getHTML() || currentValues.content;
+
+    // A light validation before saving
+    if (!currentValues.title || content.length < 10) {
+      setSaveStatus('idle');
+      return;
+    }
+
+    try {
+      let savedDraft;
+      const payload = { ...currentValues, content, organizationId };
+
+      if (currentDraftId) {
+        // Update existing draft
+        const response = await fetch(`/api/drafts/${currentDraftId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
         });
-        return () => subscription.unsubscribe();
-    }, [form, isSlugManuallyEdited]); // Watch form, ref doesn't trigger re-run but is accessible
+        if (!response.ok) throw new Error("Failed to save draft.");
+        savedDraft = await response.json();
+      } else {
+        // Create new draft
+        const response = await fetch('/api/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, published: false }),
+        });
+        if (!response.ok) throw new Error("Failed to create draft.");
+        savedDraft = await response.json();
+        setCurrentDraftId(savedDraft.id);
+        router.replace(`/dashboard/editor/${savedDraft.id}`, { scroll: false });
+      }
 
-    // --- Effect to set initial title/slug from loaded content ---
-    useEffect(() => {
-        if (editor && !form.formState.isDirty) { // Only on initial load or reset
-            const initialContent = form.getValues('content');
-            // Need to temporarily set content to parse it if editor loaded with default/empty
-            if (initialContent && editor.isEmpty) {
-                 editor.commands.setContent(initialContent, false);
-            }
+      setSaveStatus('saved');
+      setLastSaved(new Date(savedDraft.updatedAt));
+      // CRITICAL: Reset the form's default values to the saved state.
+      // This marks the form as "not dirty" until the next user edit.
+      form.reset(savedDraft);
 
-            const initialH1 = findFirstH1Text(editor);
-            const currentTitle = form.getValues('title');
-            const currentSlug = form.getValues('slug');
+    } catch (error) {
+      setSaveStatus('error');
+      console.error("Auto-save failed:", error);
+    }
+  }, [editor, form, currentDraftId, organizationId, router]);
 
-            if (initialH1 && (!currentTitle || post?.title === currentTitle)) { // Update if title is empty or matches original post prop title
-                form.setValue('title', initialH1, { shouldDirty: !!post?.id }); // Mark dirty only if editing
-                 if (!currentSlug || post?.slug === currentSlug) { // Update slug only if empty or matches original
-                     form.setValue('slug', generateSlug(initialH1), { shouldDirty: !!post?.id });
-                     isSlugManuallyEdited.current = false; // Reset slug flag
-                 }
-            }
-             // Set initial meta fields if empty
-             const currentMetaTitle = form.getValues('metaTitle');
-             const currentMetaDesc = form.getValues('metaDescription');
-             const currentExcerpt = form.getValues('excerpt');
+  useEffect(() => {
+    // This effect listens for changes and sets up the debounced save.
 
-             if (!currentMetaTitle && initialH1) {
-                 form.setValue('metaTitle', initialH1, { shouldDirty: !!post?.id });
-             }
-             if (!currentMetaDesc && currentExcerpt) {
-                 form.setValue('metaDescription', currentExcerpt, { shouldDirty: !!post?.id });
-             }
+    // Only trigger auto-save if the form has been modified by the user.
+    if (form.formState.isDirty) {
+      // If a timer is already running, clear it. This is the debounce.
+      if (autoSaveTimer.current) {
+        clearTimeout(autoSaveTimer.current);
+      }
 
+      // Set a new timer to call the save function after 3 seconds of inactivity.
+      autoSaveTimer.current = setTimeout(() => {
+        handleAutoSave();
+      }, 3000); // 3-second delay
+    }
+
+    // Cleanup function to clear the timer if the component unmounts
+    return () => {
+      if (autoSaveTimer.current) {
+        clearTimeout(autoSaveTimer.current);
+      }
+    };
+  }, [watchedFormData, form.formState.isDirty, handleAutoSave]);
+
+
+  // --- Final Publish/Update Logic ---
+  async function onSubmit(values: z.infer<typeof postSchema>) {
+    // Before publishing, ensure any last-minute changes are saved.
+    if (autoSaveTimer.current) {
+      clearTimeout(autoSaveTimer.current);
+    }
+    // Awaiting here ensures the final content is saved before publishing.
+    await handleAutoSave();
+
+    setIsSubmitting(true);
+    try {
+      const finalDraftId = currentDraftId || post?.id;
+      if (!finalDraftId) throw new Error("No draft to publish.");
+
+      const response = await fetch(`/api/posts/${finalDraftId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...values, published: true }),
+      });
+      if (!response.ok) throw new Error("Failed to publish post.");
+      toast({ title: "Post Published!", description: "Your post is now live." });
+      router.push('/dashboard/posts');
+      router.refresh();
+    } catch (error: any) {
+      toast({ title: "Error Publishing", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // --- Handler for Draft Selection Dialog ---
+  const handleSelectDraft = (draft: any) => {
+    form.reset(draft);
+    if (editor) editor.commands.setContent(draft.content);
+    setCurrentDraftId(draft.id);
+    setLastSaved(new Date(draft.updatedAt));
+    // Update URL to the draft's edit page
+    router.replace(`/dashboard/editor/${draft.id}`, { scroll: false });
+    setIsDraftDialogOpen(false);
+  }
+
+  // --- Effect to auto-generate Slug from Title ---
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (name === 'title' && value.title) {
+        // Only update slug if it hasn't been manually edited *since the last title change*
+        if (!isSlugManuallyEdited.current) {
+          const newSlug = generateSlug(value.title); // Use your utility function
+          if (newSlug !== form.getValues('slug')) {
+            form.setValue("slug", newSlug, { shouldValidate: true, shouldDirty: true });
+          }
         }
-    }, [editor, form, post]); // Re-run if editor instance changes
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, isSlugManuallyEdited]); // Watch form, ref doesn't trigger re-run but is accessible
+
+  // --- Effect to set initial title/slug from loaded content ---
+  useEffect(() => {
+    if (editor && !form.formState.isDirty) { // Only on initial load or reset
+      const initialContent = form.getValues('content');
+      // Need to temporarily set content to parse it if editor loaded with default/empty
+      if (initialContent && editor.isEmpty) {
+        editor.commands.setContent(initialContent, false);
+      }
+
+      const initialH1 = findFirstH1Text(editor);
+      const currentTitle = form.getValues('title');
+      const currentSlug = form.getValues('slug');
+
+      if (initialH1 && (!currentTitle || post?.title === currentTitle)) { // Update if title is empty or matches original post prop title
+        form.setValue('title', initialH1, { shouldDirty: !!post?.id }); // Mark dirty only if editing
+        if (!currentSlug || post?.slug === currentSlug) { // Update slug only if empty or matches original
+          form.setValue('slug', generateSlug(initialH1), { shouldDirty: !!post?.id });
+          isSlugManuallyEdited.current = false; // Reset slug flag
+        }
+      }
+      // Set initial meta fields if empty
+      const currentMetaTitle = form.getValues('metaTitle');
+      const currentMetaDesc = form.getValues('metaDescription');
+      const currentExcerpt = form.getValues('excerpt');
+
+      if (!currentMetaTitle && initialH1) {
+        form.setValue('metaTitle', initialH1, { shouldDirty: !!post?.id });
+      }
+      if (!currentMetaDesc && currentExcerpt) {
+        form.setValue('metaDescription', currentExcerpt, { shouldDirty: !!post?.id });
+      }
+
+    }
+  }, [editor, form, post]); // Re-run if editor instance changes
 
 
   const handleAiSuggestion = useCallback(
@@ -410,16 +546,16 @@ export function BlogEditor({ organizationId, post }: {
         // Use JSON for better structure preservation if suggestion is JSON
         const isJson = typeof suggestion === 'object';
         editor.commands.setContent(suggestion, false);
-         // Re-trigger title/slug update after AI content sets
-         const newH1 = findFirstH1Text(editor);
-         if (newH1) {
-             form.setValue('title', newH1, { shouldValidate: true, shouldDirty: true });
-             // Only auto-slug if not manually edited
-             if (!isSlugManuallyEdited.current) {
-                 form.setValue('slug', generateSlug(newH1), { shouldValidate: true, shouldDirty: true });
-             }
-         }
-         form.setValue('content', isJson ? editor.getHTML() : suggestion, { shouldValidate: true, shouldDirty: true });
+        // Re-trigger title/slug update after AI content sets
+        const newH1 = findFirstH1Text(editor);
+        if (newH1) {
+          form.setValue('title', newH1, { shouldValidate: true, shouldDirty: true });
+          // Only auto-slug if not manually edited
+          if (!isSlugManuallyEdited.current) {
+            form.setValue('slug', generateSlug(newH1), { shouldValidate: true, shouldDirty: true });
+          }
+        }
+        form.setValue('content', isJson ? editor.getHTML() : suggestion, { shouldValidate: true, shouldDirty: true });
       }
     },
     [editor, form],
@@ -437,71 +573,11 @@ export function BlogEditor({ organizationId, post }: {
     }
   }, [isMobile, mobileView])
 
-    // --- Handle Featured Image Upload ---
-    const handleFeaturedImageUploaded = (url: string) => {
-        form.setValue("featuredImage", url, { shouldValidate: true, shouldDirty: true });
-        setShowImageUploader(false); // Close modal on success
-    };
-
-  // --- Form Submission Handler ---
-  async function onSubmit(values: z.infer<typeof postSchema>) {
-    setIsSubmitting(true)
-    try {
-      // Final check to ensure editor content is included
-      const finalValues = {
-        ...values,
-        content: editor?.getHTML() || values.content,
-        organizationId: organizationId, // Ensure it's explicitly passed
-      };
-
-       // Add default meta title/description if empty
-       if (!finalValues.metaTitle) {
-          finalValues.metaTitle = finalValues.title;
-       }
-       if (!finalValues.metaDescription) {
-          finalValues.metaDescription = finalValues.excerpt || ''; // Use excerpt if available
-       }
-
-
-      console.log("Submitting:", finalValues); // Debug log
-
-      const response = await fetch(post?.id ? `/api/posts/${post.id}` : "/api/posts", {
-        method: post?.id ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(finalValues),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Failed to save post. Server response invalid." }));
-        console.error("Server error response:", errorData);
-        throw new Error(errorData.message || `Failed to save post (Status: ${response.status})`);
-      }
-
-      const savedPost = await response.json()
-
-      toast({
-        title: post?.id ? "Post updated" : "Post created",
-        description: "Your post has been saved successfully.",
-      })
-
-      form.reset(savedPost); // Reset form with saved data
-      isSlugManuallyEdited.current = false; // Reset slug flag after successful save/reset
-      router.push(`/dashboard/posts`)
-      router.refresh();
-
-    } catch (error: any) {
-      console.error("Submission error:", error);
-      toast({
-        title: "Error Saving Post",
-        description: error.message || "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+  // --- Handle Featured Image Upload ---
+  const handleFeaturedImageUploaded = (url: string) => {
+    form.setValue("featuredImage", url, { shouldValidate: true, shouldDirty: true });
+    setShowImageUploader(false); // Close modal on success
+  };
 
   // Render loading or null if editor isn't ready
   if (!editor) {
@@ -509,212 +585,206 @@ export function BlogEditor({ organizationId, post }: {
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 md:p-6">
-        {/* --- Top Level Fields --- */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Title</FormLabel>
-                 <FormDescription>Automatically updated from the first H1 in the editor.</FormDescription>
-                <FormControl>
-                  {/* Title is read-only or visually disabled as it's auto-populated */}
-                  <Input placeholder="Auto-generated from editor H1" {...field} readOnly className="bg-muted/50 border-dashed" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="slug"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Slug</FormLabel>
-                 <FormDescription>Auto-generated, or edit manually.</FormDescription>
-                <FormControl>
-                  <Input
-                    placeholder="auto-generated-slug"
-                    {...field}
-                    onChange={(e) => {
+    <>
+      <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Continue Your Work</DialogTitle><DialogDescription>You have unpublished drafts. Choose one to continue editing or start a new post.</DialogDescription></DialogHeader>
+          <div className="space-y-2 py-4">
+            {drafts?.map(draft => (
+              <button key={draft.id} onClick={() => handleSelectDraft(draft)} className="w-full text-left p-2 rounded-md hover:bg-accent">
+                <p className="font-medium">{draft.title || "Untitled Draft"}</p>
+                <p className="text-sm text-muted-foreground">Last saved {format(new Date(draft.updatedAt), "MMM d, yyyy 'at' h:mm a")}</p>
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" onClick={() => setIsDraftDialogOpen(false)}>Start a New Post</Button>
+        </DialogContent>
+      </Dialog>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 md:p-6">
+          {/* --- Top Level Fields --- */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormDescription>Automatically updated from the first H1 in the editor.</FormDescription>
+                  <FormControl>
+                    {/* Title is read-only or visually disabled as it's auto-populated */}
+                    <Input placeholder="Auto-generated from editor H1" {...field} readOnly className="bg-muted/50 border-dashed" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            <FormField
+              control={form.control}
+              name="slug"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Slug</FormLabel>
+                  <FormDescription>Auto-generated, or edit manually.</FormDescription>
+                  <FormControl>
+                    <Input
+                      placeholder="auto-generated-slug"
+                      {...field}
+                      onChange={(e) => {
                         // Set flag on manual change
-                        isSlugManuallyEdited.current = true;
-                        field.onChange(e); // Propagate change to RHF
-                    }}
-                    />
+                        isSlugManuallyEdited.current = true
+                        field.onChange(e) // Propagate change to RHF
+                      }} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="excerpt"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Excerpt (Optional)</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="A short summary for previews and meta description fallback" {...field} rows={3} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
-            )}
-          />
-        </div>
+            )} />
 
-        <FormField
-          control={form.control}
-          name="excerpt"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Excerpt (Optional)</FormLabel>
-              <FormControl>
-                <Textarea placeholder="A short summary for previews and meta description fallback" {...field} rows={3} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="featuredImage"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Featured Image URL (Optional)</FormLabel>
-              <div className="flex items-center space-x-2">
-                 <FormControl>
-                  <Input placeholder="https://..." {...field} />
-                </FormControl>
-                 <Button
+          <FormField
+            control={form.control}
+            name="featuredImage"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Featured Image URL (Optional)</FormLabel>
+                <div className="flex items-center space-x-2">
+                  <FormControl>
+                    <Input placeholder="https://..." {...field} />
+                  </FormControl>
+                  <Button
                     type="button"
                     onClick={() => setShowImageUploader(true)}
                     aria-label="Upload Featured Image"
-                >
+                  >
                     <Upload className="h-4 w-4" />
-                </Button>
-              </div>
-               <FormDescription>Enter a URL directly or upload an image.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                  </Button>
+                </div>
+                <FormDescription>Enter a URL directly or upload an image.</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )} />
 
-        <Separator />
+          <Separator />
 
-        {/* --- Tiptap Editor and Toolbar --- */}
-        <EditorContext.Provider value={{ editor }}>
+          {/* --- Tiptap Editor and Toolbar --- */}
+          <EditorContext.Provider value={{ editor }}>
             <Toolbar
-            style={
-              isMobile
-              ? {
-                position: 'sticky',
-                top: '0', // Adjust based on your header height if necessary
-                zIndex: 10,
-                backgroundColor: 'hsl(var(--background))', // Add background to prevent content showing through
-                 borderBottom: '1px solid hsl(var(--border))', // Add separator
-              }
-              : { position: 'sticky', top: '0', zIndex: 10, overflowX: 'auto', backgroundColor: 'hsl(var(--background))', borderBottom: '1px solid hsl(var(--border))'}
-            }
-            className="custom-toolbar-scroll"
+              style={isMobile
+                ? {
+                  position: 'sticky',
+                  top: '0', // Adjust based on your header height if necessary
+                  zIndex: 10,
+                  backgroundColor: 'hsl(var(--background))', // Add background to prevent content showing through
+                  borderBottom: '1px solid hsl(var(--border))', // Add separator
+                }
+                : { position: 'sticky', top: '0', zIndex: 10, overflowX: 'auto', backgroundColor: 'hsl(var(--background))', borderBottom: '1px solid hsl(var(--border))' }}
+              className="custom-toolbar-scroll"
             >
-             {/* Toolbar Content (MainToolbarContent / MobileToolbarContent) */}
-            {mobileView === "main" ? (
-              <MainToolbarContent
-              onEmbedClick={() => setMobileView("embed")}
-              onAdPlaceholderClick={() => setMobileView("ad-placeholder")}
-              onHighlighterClick={() => setMobileView("highlighter")}
-              onLinkClick={() => setMobileView("link")}
-              isMobile={isMobile}
-              setShowAiAssistant={setShowAiAssistant}
-              />
-            ) : (
-              <MobileToolbarContent
-              type={mobileView}
-              onBack={() => setMobileView("main")}
-              />
-            )}
+              {/* Toolbar Content (MainToolbarContent / MobileToolbarContent) */}
+              {mobileView === "main" ? (
+                <MainToolbarContent
+                  onEmbedClick={() => setMobileView("embed")}
+                  onAdPlaceholderClick={() => setMobileView("ad-placeholder")}
+                  onHighlighterClick={() => setMobileView("highlighter")}
+                  onLinkClick={() => setMobileView("link")}
+                  isMobile={isMobile}
+                  setShowAiAssistant={setShowAiAssistant} />
+              ) : (
+                <MobileToolbarContent
+                  type={mobileView}
+                  onBack={() => setMobileView("main")} />
+              )}
             </Toolbar>
 
-           {/* Added border and bg for better visual separation */}
-          <div className="content-wrapper mt-2 rounded-md border bg-background shadow-sm">
-            <EditorContent
-              editor={editor}
-              role="presentation"
-              className="simple-editor-content" // Ensure this class provides padding if not using prose p-4 above
-            />
+            {/* Added border and bg for better visual separation */}
+            <div className="content-wrapper mt-2 rounded-md border bg-background shadow-sm">
+              <EditorContent
+                editor={editor}
+                role="presentation"
+                className="simple-editor-content" // Ensure this class provides padding if not using prose p-4 above
+              />
+            </div>
+
+          </EditorContext.Provider>
+
+          <Separator />
+
+          {/* --- SEO Fields --- */}
+          <h2 className="text-lg font-semibold">SEO Settings (Optional)</h2>
+          <div className="space-y-4 rounded-md border p-4">
+            <FormField
+              control={form.control}
+              name="metaTitle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Meta Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="SEO Title (defaults to post title)" {...field} />
+                  </FormControl>
+                  <FormDescription>Recommended length: 50-60 characters.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            <FormField
+              control={form.control}
+              name="metaDescription"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Meta Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="SEO Description (defaults to excerpt)" {...field} rows={3} />
+                  </FormControl>
+                  <FormDescription>Recommended length: 150-160 characters.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )} />
           </div>
 
-        </EditorContext.Provider>
+          <Separator />
 
-        <Separator />
+          {/* --- Action Buttons --- */}
+          {/* --- Action Buttons with Save Status --- */}
+          <div className="flex items-center justify-end space-x-4">
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              {saveStatus === 'saving' && <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>}
+              {saveStatus === 'saved' && lastSaved && <><Clock className="h-4 w-4" /> Last saved {format(lastSaved, "h:mm:ss a")}</>}
+              {saveStatus === 'error' && <span className="text-destructive">Save failed</span>}
+            </div>
+            <Button type="button" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
+              {isSubmitting ? "Publishing..." : <><Save className="mr-2 h-4 w-4" /> {post?.published ? 'Update Post' : 'Publish'}</>}
+            </Button>
+          </div>
+        </form>
 
-        {/* --- SEO Fields --- */}
-        <h2 className="text-lg font-semibold">SEO Settings (Optional)</h2>
-        <div className="space-y-4 rounded-md border p-4">
-          <FormField
-            control={form.control}
-            name="metaTitle"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Meta Title</FormLabel>
-                <FormControl>
-                  <Input placeholder="SEO Title (defaults to post title)" {...field} />
-                </FormControl>
-                 <FormDescription>Recommended length: 50-60 characters.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
+        {/* AI Assistant Modal */}
+        {showAiAssistant && editor && ( // Ensure editor is available
+          <AiAssistant
+            onClose={() => setShowAiAssistant(false)}
+            onSuggestion={handleAiSuggestion}
+            currentContent={JSON.stringify(editorContent)} // Pass current JSON content
           />
-          <FormField
-            control={form.control}
-            name="metaDescription"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Meta Description</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="SEO Description (defaults to excerpt)" {...field} rows={3} />
-                </FormControl>
-                 <FormDescription>Recommended length: 150-160 characters.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        <Separator />
-
-        {/* --- Action Buttons --- */}
-        <div className="flex justify-end space-x-4">
-          <Button type="button"  onClick={() => router.back()} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting || !form.formState.isDirty || !form.formState.isValid}>
-            {isSubmitting ? (
-              "Saving..."
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                {post?.id ? "Update Post" : "Save Post"}
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
-
-      {/* AI Assistant Modal */}
-       {showAiAssistant && editor && ( // Ensure editor is available
-        <AiAssistant
-          onClose={() => setShowAiAssistant(false)}
-          onSuggestion={handleAiSuggestion}
-          currentContent={JSON.stringify(editorContent)} // Pass current JSON content
-        />
-      )}
-
-       {/* Feature Image Uploader Modal */}
-        {showImageUploader && (
-            <ImageUploader
-                onClose={() => setShowImageUploader(false)}
-                onImageUploaded={handleFeaturedImageUploaded}
-            />
         )}
-    </Form>
+
+        {/* Feature Image Uploader Modal */}
+        {showImageUploader && (
+          <ImageUploader
+            onClose={() => setShowImageUploader(false)}
+            onImageUploaded={handleFeaturedImageUploaded} />
+        )}
+      </Form>
+    </>
   )
 }
-
-
-// --- Helper function for slug generation (Example) ---
-// Create this in "@/lib/utils.ts" or similar
-/*
-
-*/

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,70 +10,123 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Check, ArrowRight, PenSquare, Users, Loader2 } from "lucide-react";
+import { Check, ArrowRight, PenSquare, Users, Loader2, Mail, XIcon } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Organization {
   id: string;
   name: string;
 }
 
+
+type OnboardingView = 'loading' | 'invitation' | 'selection' | 'joinForm' | 'createForm';
+
+
 export default function OnboardingFlow() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
-  const [userRole, setUserRole] = useState<"writer" | "organization" | null>(null);
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const { update } = useSession();
+
+  const [view, setView] = useState<OnboardingView>('loading');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrg, setSelectedOrg] = useState("");
-  const { data: session, update } = useSession(); // <-- Use the hook to get the update function
+  const [invitations, setInvitations] = useState<any[]>([]);
 
-  // Fetch organizations when the component loads
+
+
   useEffect(() => {
-    const fetchOrgs = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("/api/organizations");
-        const data = await response.json();
-        setOrganizations(data);
+        const [orgResponse, inviteResponse] = await Promise.all([
+          fetch("/api/organizations"),
+          fetch('/api/user/invitations'),
+        ]);
+
+        const orgs = await orgResponse.json();
+        const invites = await inviteResponse.json();
+
+        setOrganizations(orgs);
+        setInvitations(invites);
+
+        // Logic to determine the initial view
+        const stepParam = searchParams.get('step');
+        if (stepParam === 'join') {
+          setView('joinForm');
+        } else if (stepParam === 'create') {
+          setView('createForm');
+        } else if (invites && invites.length > 0) {
+          setView('invitation');
+        } else {
+          setView('selection');
+        }
       } catch (err) {
-        setError("Could not load organizations. Please refresh the page.");
+        setError("Could not load initial data. Please refresh.");
+        setView('selection'); // Default to selection on error
       }
     };
-    fetchOrgs();
-  }, []);
+    fetchData();
+  }, [searchParams]);
 
-  const handleRoleSelection = (role: "writer" | "organization") => {
-    setUserRole(role);
-    setStep(2);
+  const handleInviteResponse = async (inviteId: string, action: 'accept' | 'decline') => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/invites/${inviteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+
+      if (!response.ok) throw new Error(`Failed to ${action} invite.`);
+
+      toast({ title: `Invitation ${action}ed!` });
+
+      if (action === 'accept') {
+        await update(); // Critical step to refresh session
+        router.push('/dashboard');
+      } else {
+        // Remove the invitation from the view and show the selection screen
+        setInvitations(invs => invs.filter(inv => inv.id !== inviteId));
+        setView('selection');
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleWriterSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
-    
+
     const formData = new FormData(event.currentTarget);
     const message = formData.get("message") as string;
 
     try {
-        const response = await fetch('/api/onboarding/request-join', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ organizationId: selectedOrg, message }),
-        });
+      const response = await fetch('/api/onboarding/request-join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: selectedOrg, message }),
+      });
 
-        if (!response.ok) throw new Error('Failed to send request.');
+      if (!response.ok) throw new Error('Failed to send request.');
 
-        // FIX: Manually trigger a session update
-        await update();
+      // FIX: Manually trigger a session update
+      await update();
 
-        setShowSuccess(true);
-        setTimeout(() => router.push("/dashboard"), 2000);
+      setShowSuccess(true);
+      setTimeout(() => router.push("/dashboard"), 2000);
     } catch (err: any) {
-        setError(err.message);
+      setError(err.message);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -87,23 +140,23 @@ export default function OnboardingFlow() {
     const website = formData.get("website") as string;
 
     try {
-        const response = await fetch('/api/onboarding/organization', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orgName, website }),
-        });
+      const response = await fetch('/api/onboarding/organization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgName, website }),
+      });
 
-        if (!response.ok) throw new Error('Failed to create organization.');
-        
-        // FIX: Manually trigger a session update
-        await update();
+      if (!response.ok) throw new Error('Failed to create organization.');
 
-        // Now that the session is updated, the redirect will work.
-        router.push("/dashboard");
+      // FIX: Manually trigger a session update
+      await update();
+
+      // Now that the session is updated, the redirect will work.
+      router.push("/dashboard");
     } catch (err: any) {
-        setError(err.message);
+      setError(err.message);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -128,11 +181,19 @@ export default function OnboardingFlow() {
     </div>
   );
 
+  if (view === 'loading') {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="container flex min-h-screen w-screen flex-col items-center justify-center bg-white dark:bg-black">
       <AnimatePresence mode="wait">
         <motion.div
-          key={step}
+          key={view}
           variants={cardVariants}
           initial="hidden"
           animate="visible"
@@ -140,32 +201,49 @@ export default function OnboardingFlow() {
           transition={{ duration: 0.3 }}
           className="w-full max-w-md"
         >
-          {step === 1 && (
+          {/* --- INVITATION VIEW --- */}
+          {view === 'invitation' && invitations.length > 0 && (
+            <Card>
+              <CardHeader className="text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <Mail className="h-6 w-6 text-primary" />
+                </div>
+                <CardTitle className="mt-4 text-2xl">You're Invited!</CardTitle>
+                <CardDescription>
+                  You have been invited to join the <strong>{invitations[0].organization.name}</strong> organization.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-center text-sm text-muted-foreground">Accepting will automatically set up your account and take you to the dashboard.</p>
+              </CardContent>
+              <CardFooter className="grid grid-cols-2 gap-4">
+                <Button variant="outline" onClick={() => handleInviteResponse(invitations[0].id, 'decline')} disabled={isLoading}>
+                  <XIcon className="mr-2 h-4 w-4" /> Decline
+                </Button>
+                <Button onClick={() => handleInviteResponse(invitations[0].id, 'accept')} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+                  Accept Invite
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
+
+          {/* --- ROLE SELECTION VIEW --- */}
+          {view === 'selection' && (
             <Card>
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl">Welcome to DITBlogs!</CardTitle>
-                <CardDescription>
-                  To get started, tell us how you'll be using the platform.
-                </CardDescription>
+                <CardDescription>How will you be using the platform?</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <RoleCard
-                    icon={<PenSquare className="h-8 w-8 text-primary" />}
-                    title="I'm a Writer or Editor"
-                    description="Join an existing organization to contribute content."
-                    onClick={() => handleRoleSelection("writer")}
-                />
-                <RoleCard
-                    icon={<Users className="h-8 w-8 text-primary" />}
-                    title="I'm setting up an Organization"
-                    description="Create a new workspace for your team and connect your website."
-                    onClick={() => handleRoleSelection("organization")}
-                />
+                <RoleCard icon={<PenSquare />} title="I'm a Writer or Editor" description="Join an existing organization." onClick={() => setView('joinForm')} />
+                <RoleCard icon={<Users />} title="I'm setting up an Organization" description="Create a new workspace for your team." onClick={() => setView('createForm')} />
               </CardContent>
             </Card>
           )}
 
-          {step === 2 && userRole === "writer" && (
+          {/* --- JOIN ORGANIZATION FORM --- */}
+          {view === 'joinForm' && (
             <Card>
               <form onSubmit={handleWriterSubmit}>
                 <CardHeader>
@@ -176,11 +254,11 @@ export default function OnboardingFlow() {
                   {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
                   {showSuccess ? (
                     <div className="flex flex-col items-center justify-center space-y-3 text-center">
-                        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
-                            <Check className="h-16 w-16 text-green-500" />
-                        </motion.div>
-                        <p className="text-lg font-semibold">Request Sent!</p>
-                        <p className="text-sm text-muted-foreground">You will be redirected once your request is approved.</p>
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
+                        <Check className="h-16 w-16 text-green-500" />
+                      </motion.div>
+                      <p className="text-lg font-semibold">Request Sent!</p>
+                      <p className="text-sm text-muted-foreground">You will be redirected once your request is approved.</p>
                     </div>
                   ) : (
                     <>
@@ -206,17 +284,17 @@ export default function OnboardingFlow() {
                 </CardContent>
                 <CardFooter>
                   {!showSuccess && (
-                     <Button type="submit" className="w-full" disabled={isLoading || !selectedOrg}>
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />}
-                        {isLoading ? "Sending..." : "Send Approval Request"}
-                     </Button>
+                    <Button type="submit" className="w-full" disabled={isLoading || !selectedOrg}>
+                      {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowRight className="mr-2 h-4 w-4" />}
+                      {isLoading ? "Sending..." : "Send Approval Request"}
+                    </Button>
                   )}
                 </CardFooter>
               </form>
             </Card>
           )}
-
-          {step === 2 && userRole === "organization" && (
+          {/* --- CREATE ORGANIZATION FORM --- */}
+          {view === 'createForm' && (
             <Card>
               <form onSubmit={handleOrgSubmit}>
                 <CardHeader>

@@ -76,6 +76,8 @@ model User {
   organization   Organization? @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
 
   ownedOrganization Organization? @relation("OrganizationOwner")
+  invites           Invite[] @relation("UserInvites")
+
 
   accounts          Account[]
   sessions          Session[]
@@ -105,22 +107,53 @@ model Organization {
   members            User[]              @relation("OrganizationMembers")
   posts              Post[]
   membershipRequests MembershipRequest[] @relation("OrgRequests")
+
+  Invite Invite[]
 }
 
+// Add a new enum for InviteStatus
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+// In the MembershipRequest model, add a status field
 model MembershipRequest {
-  id        String           @id @default(cuid())
-  message   String?          @db.Text
-  status    MembershipStatus @default(PENDING)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id             String           @id @default(cuid())
+  message        String?          @db.Text
+  // FIX: Change status to the enum to handle rejection
+  status         MembershipStatus @default(PENDING) 
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   userId         String
-  user           User         @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
+  user           User             @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
   organizationId String
-  organization   Organization @relation("OrgRequests", fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation("OrgRequests", fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
 }
+
+// Add a new model for Invitations
+model Invite {
+  id             String       @id @default(cuid())
+  email          String       // The email of the person being invited
+  status         InviteStatus @default(PENDING)
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  // Optional: Link to an existing user if they have an account
+  invitedUserId  String?      @unique 
+  invitedUser    User?        @relation("UserInvites", fields: [invitedUserId], references: [id], onDelete:SetNull)
+
+  @@index([email])
+  @@index([organizationId])
+}
+
 
 model VerificationToken {
   identifier String

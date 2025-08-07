@@ -69,14 +69,14 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`sticky top-0 z-[60] w-full border-b ${isScrolled ? "bg-background/80 backdrop-blur-sm " : "bg-background"
+      className={`sticky top-0 px-4 z-50 w-full border-b ${isScrolled ? "bg-background/80 backdrop-blur-sm " : "bg-background"
         } transition-all duration-200`}
     >
-      <div className="container flex h-16 items-center justify-between">
+      <div className=" flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center space-x-2">
               <img
-                src={"/placeholder.svg"}
+                src={"/logotext.png"}
                 alt={"DITBlogs"}
                 className="h-8 w-auto"
               />

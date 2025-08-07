@@ -63,6 +63,27 @@ export const getAllUsersInOrg = cache(
   }
 );
 
+export const getPendingRequests = cache(async (organizationId: string) => {
+    if (!organizationId) return [];
+
+    const requests = await db.membershipRequest.findMany({
+        where: {
+            organizationId,
+            status: 'PENDING',
+        },
+        include: {
+            // Include the user's details to display in the table
+            user: {
+                select: { name: true, email: true, image: true },
+            },
+        },
+        orderBy: {
+            createdAt: 'asc',
+        },
+    });
+
+    return requests;
+});
 
 /**
  * Fetches key statistics for A SPECIFIC ORGANIZATION.

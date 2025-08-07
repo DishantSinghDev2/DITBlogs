@@ -13,10 +13,10 @@ export function SiteFooter({ variant = 'full' }: SiteFooterProps) {
   if (variant === 'compact') {
     return (
       <footer className="bg-background border-t">
-        <div className="container py-4">
+        <div className=" py-4">
           <div className="flex flex-col items-center justify-between gap-4 text-sm text-muted-foreground md:flex-row">
             <p>
-              {`© ${new Date().getFullYear()} DITBlogs. All rights reserved.`}
+              {`© ${new Date().getFullYear()} DishIs Technologies. All rights reserved.`}
             </p>
             <div className="flex items-center gap-x-4">
               <Link href="/terms" className="hover:text-primary">
@@ -47,20 +47,24 @@ export function SiteFooter({ variant = 'full' }: SiteFooterProps) {
   };
 
   return (
-    <footer className="bg-background border-t">
-      <div className="container py-12">
+    <footer className="bg-background border-t px-4">
+      <div className=" py-12">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="space-y-4">
             <Link href="/" className="flex items-center space-x-2">
-              <span className="text-xl font-bold">DITBlogs</span>
+              <img
+                src={"/logotext.png"}
+                alt={"DITBlogs"}
+                className="h-8 w-auto"
+              />
             </Link>
             <p className="text-sm text-muted-foreground max-w-xs">
               {"The effortless blogging platform for your business."}
             </p>
             <div className="flex space-x-4">
               {/* Social Links rendering */}
-              
-               {/* ... other social links ... */}
+
+              {/* ... other social links ... */}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-8 lg:col-span-2">
@@ -92,7 +96,7 @@ export function SiteFooter({ variant = 'full' }: SiteFooterProps) {
         </div>
         <div className="mt-12 border-t pt-8">
           <p className="text-sm text-muted-foreground">
-            {`© ${new Date().getFullYear()} DITBlogs. All rights reserved.`}
+            {`© ${new Date().getFullYear()} DishIs Technologies. All rights reserved.`}
           </p>
         </div>
       </div>

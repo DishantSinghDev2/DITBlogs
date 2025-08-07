@@ -1,59 +1,93 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { db } from "@/lib/db"; // Import your Prisma Client
+import { db } from "@/lib/db";
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell-child";
 import { DashboardStats } from "@/components/dashboard/dashboard-stats";
 import { RecentPosts } from "@/components/dashboard/recent-posts";
 import { DraftPosts } from "@/components/dashboard/draft-posts";
 import { getUserStats, getRecentPosts, getDraftPosts } from "@/lib/api/dashboard";
+import { InvitationDashboard } from "@/components/dashboard/invitation-dashboard";
+import { PendingDashboard } from "@/components/dashboard/pending-dashboard";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
-
   if (!session?.user?.id) {
     redirect("/auth/login");
   }
 
-  // --- FIX: Get the user's organization context ---
-  const user = await db.user.findUnique({
+  // 1. Fetch a comprehensive user status in one query
+  const userStatus = await db.user.findUnique({
     where: { id: session.user.id },
     select: {
       organizationId: true,
-      ownedOrganization: { select: { id: true } },
+      // Get the first pending invitation
+      invites: {
+        where: { status: 'PENDING' },
+        take: 1,
+        include: { organization: { select: { name: true } } },
+      },
+      // Get the first pending or rejected membership request
+      membershipRequest: {
+        where: { status: { in: ['PENDING', 'REJECTED'] } },
+        take: 1,
+        include: { organization: { select: { name: true } } },
+      },
     },
   });
-  
-  const orgId = user?.ownedOrganization?.id || user?.organizationId;
 
-  // If user has no organization context, they can't see a dashboard.
-  if (!orgId) {
-    // This state can happen if a writer is pending approval.
-    redirect("/onboarding?status=pending");
+  if (!userStatus) {
+    // This should not happen for an authenticated user
+    redirect("/auth/login");
   }
 
-  // --- FIX: Pass the organizationId to your data-fetching functions ---
-  const [stats, recentPosts, draftPosts] = await Promise.all([
-    getUserStats(orgId),
-    getRecentPosts(orgId),
-    getDraftPosts(orgId),
-  ]);
+  // --- Logic to determine which view to show ---
 
-  return (
-    <DashboardShell>
-      <DashboardHeader
-        heading="Dashboard"
-        text="Welcome back! Here's an overview of your activity."
-      />
-      <div className="grid gap-6">
-        <DashboardStats stats={stats} />
-        <div className="grid gap-6 md:grid-cols-2">
-          <RecentPosts posts={recentPosts} />
-          <DraftPosts posts={draftPosts} />
+  // Priority 1: User is an active member of an organization ("Happy Path")
+  if (userStatus.organizationId) {
+    const [stats, recentPosts, draftPosts] = await Promise.all([
+      getUserStats(userStatus.organizationId),
+      getRecentPosts(userStatus.organizationId),
+      getDraftPosts(userStatus.organizationId),
+    ]);
+
+    return (
+      <>
+        <DashboardHeader
+          heading="Dashboard"
+          text="Welcome back! Here's an overview of your activity." />
+        <div className="grid gap-6">
+          <DashboardStats stats={stats} />
+          <div className="grid gap-6 md:grid-cols-2">
+            <RecentPosts posts={recentPosts} />
+            <DraftPosts posts={draftPosts} />
+          </div>
         </div>
-      </div>
-    </DashboardShell>
-  );
+      </>
+    );
+  }
+
+  // Priority 2: User has a pending invitation
+  const pendingInvite = userStatus.invites[0];
+  if (pendingInvite) {
+    return (
+      <InvitationDashboard invite={pendingInvite} />
+    );
+  }
+
+  // Priority 3: User has a pending or rejected request
+  const membershipRequest = userStatus.membershipRequest[0];
+  if (membershipRequest) {
+    // The middleware will handle redirecting REJECTED users to /rejected.
+    // This part handles the PENDING state.
+    if (membershipRequest.status === 'PENDING') {
+      return (
+        <PendingDashboard request={membershipRequest} />
+      );
+    }
+  }
+
+  // Fallback: If none of the above, user needs to start onboarding
+  redirect("/onboarding");
 }

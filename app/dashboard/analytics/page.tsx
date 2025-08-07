@@ -4,16 +4,17 @@ import { db } from "@/lib/db";
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
 import { getUserRoleInOrg } from "@/lib/api/user";
-import { getOrganizationAnalytics } from "@/lib/api/analytics"; // Renamed for clarity
+import { getOrganizationAnalytics } from "@/lib/api/analytics";
 
-export default async function AdminAnalyticsPage() {
+export default async function AdminAnalyticsPage({
+  searchParams,
+}: {
+  searchParams?: { from?: string; to?: string };
+}) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    redirect("/auth/login");
-  }
+  if (!session?.user?.id) redirect("/auth/login");
 
   // 1. Get the user's organization context
   const user = await db.user.findUnique({
@@ -25,22 +26,23 @@ export default async function AdminAnalyticsPage() {
   if (!orgId) {
     redirect("/onboarding");
   }
+  if (!orgId) redirect("/onboarding");
 
-  // 2. Check if user is an ORG_ADMIN for their organization
   const userRole = await getUserRoleInOrg(session.user.id, orgId);
-  if (userRole !== "ORG_ADMIN") {
-    redirect("/dashboard");
-  }
+  if (userRole !== "ORG_ADMIN") redirect("/dashboard");
 
-  // 3. Fetch analytics data specifically for the current organization
-  const analyticsData = await getOrganizationAnalytics(orgId);
+  // FIX: Parse dates from search params
+  const from = searchParams?.from ? new Date(searchParams.from) : undefined;
+  const to = searchParams?.to ? new Date(searchParams.to) : undefined;
+
+  const analyticsData = await getOrganizationAnalytics(orgId, from, to);
 
   return (
-    <div className="space-y-4">
+    <>
       <DashboardHeader
-      heading="Organization Analytics"
-      text="An overview of your organization's content and engagement." />
-      <AnalyticsDashboard data={analyticsData} />
-      </div>
+        heading="Organization Analytics"
+        text="An overview of your organization's content and engagement." />
+      <AnalyticsDashboard data={analyticsData} initialDateRange={{ from, to }} />
+    </>
   );
 }

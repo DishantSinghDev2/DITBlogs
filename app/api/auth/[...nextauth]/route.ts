@@ -122,7 +122,7 @@ export const authOptions: NextAuthOptions = {
           id: profile._id, // Map _id from API to id for the adapter
           name: `${profile.firstName} ${profile.lastName}`, // Combine first and last name
           email: profile.email,
-          image: profile.avatar, // Map avatar from API to image for the adapter
+          image: `https://whatsyour.info/api/v1/avatar/${profile.username}`, // Map avatar from API to image for the adapter
           emailVerified: profile.emailVerified,
           bio: profile.bio
         };

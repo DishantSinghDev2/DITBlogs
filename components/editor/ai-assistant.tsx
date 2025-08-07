@@ -131,9 +131,6 @@ export function AiAssistant({ onClose, onSuggestion, currentContent }: AiAssista
             <Sparkles className="mr-2 h-4 w-4" />
             AI Writing Assistant
           </DialogTitle>
-          <Button variant="ghost" size="icon" className="absolute right-4 top-4" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>

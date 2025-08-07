@@ -61,33 +61,6 @@ export async function sendVerificationEmail(email: string) {
   }
 }
 
-
-export async function sendInviteEmail(email: string, token: string, role: string) {
-  const inviteUrl = `${process.env.NEXTAUTH_URL}/auth/invite?token=${token}`
-
-  const mailOptions = {
-    from: process.env.EMAIL_FROM,
-    to: email,
-    subject: "You've been invited to join InkPress",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>You've been invited to join InkPress</h2>
-        <p>You've been invited to join InkPress as a ${role}. Click the button below to accept the invitation:</p>
-        <a href="${inviteUrl}" style="display: inline-block; background-color: #4F46E5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin: 20px 0;">
-          Accept Invitation
-        </a>
-        <p>If you did not expect this invitation, please ignore this email.</p>
-        <p>This invitation will expire in 7 days.</p>
-      </div>
-    `,
-  }
-
-  await transporter.sendMail(mailOptions)
-}
-
-
-// sendEmail function
-
 export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
   try {
     const mailOptions = {
@@ -103,4 +76,42 @@ export async function sendEmail({ to, subject, html }: { to: string; subject: st
     console.error(`Failed to send email to ${to}:`, error)
     throw new Error("Email delivery failed. Please try again later.")
   }
+}
+
+interface SendInviteEmailOptions {
+    to: string;
+    organizationName: string;
+}
+
+export async function sendInviteEmail({ to, organizationName }: SendInviteEmailOptions) {
+    const loginUrl = process.env.NEXTAUTH_URL ? `${process.env.NEXTAUTH_URL}/auth/login` : 'http://localhost:3000/auth/login';
+
+    const mailOptions = {
+        from: process.env.EMAIL_FROM,
+        to,
+        subject: `You're invited to join ${organizationName} on DITBlogs`,
+        html: `
+            <div style="font-family: sans-serif; text-align: center; padding: 20px;">
+                <h2>You've been invited!</h2>
+                <p>You have been invited to join the <strong>${organizationName}</strong> organization on DITBlogs.</p>
+                <p>Click the button below to accept your invitation and get started.</p>
+                <a href="${loginUrl}" style="background-color: #007bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px;">
+                    Accept Invitation
+                </a>
+                <p style="font-size: 12px; color: #888; margin-top: 30px;">
+                    If you were not expecting this invitation, you can safely ignore this email.
+                </p>
+            </div>
+        `,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Invitation email sent to ${to}`);
+    } catch (error) {
+        console.error(`Failed to send email to ${to}:`, error);
+        // Depending on your needs, you might want to throw this error
+        // to let the calling API know the email failed.
+        throw new Error("Failed to send invitation email.");
+    }
 }

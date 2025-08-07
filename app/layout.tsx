@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   authors: [
     {
       name: "DishIs Technologies",
-      url: "https://dishis.dev", // Optional: Add your company URL
+      url: "https://dishis.tech",
     },
   ],
   creator: "DishIs Technologies",
@@ -48,19 +48,18 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: process.env.NEXTAUTH_URL || "https://ditblogs.com", // Use your production URL
+    url: process.env.NEXTAUTH_URL || "https://blogs.dishis.tech", // Use your production URL
     title: "DITBlogs: The Effortless Blogging Platform for Your Business",
     description: "Power your website with a seamless, feature-rich blog, including a powerful editor and organization management.",
     siteName: "DITBlogs",
-    // Optional: Add a specific OG image
-    // images: [
-    //   {
-    //     url: `${process.env.NEXTAUTH_URL}/og-image.png`,
-    //     width: 1200,
-    //     height: 630,
-    //     alt: 'DITBlogs - The Effortless Blogging Platform for Your Business',
-    //   },
-    // ],
+    images: [
+      {
+        url: `${process.env.NEXTAUTH_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: 'DITBlogs - The Effortless Blogging Platform for Your Business',
+      },
+    ],
   },
 
   // --- Twitter Card (for sharing on Twitter) ---
@@ -71,7 +70,7 @@ export const metadata: Metadata = {
     // Optional: Add your Twitter handle
     // creator: "@yourTwitterHandle", 
     // Optional: Add the same OG image here
-    // images: [`${process.env.NEXTAUTH_URL}/og-image.png`],
+    images: [`${process.env.NEXTAUTH_URL}/og-image.png`],
   },
 
   // --- Icons and Manifest ---
@@ -93,7 +92,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <AuthProvider>
-              <div className="relative flex min-h-screen flex-col container mx-auto px-4">
+              <div className="relative flex min-h-screen flex-col max-w-[100vw] mx-auto ">
                 <SiteHeader />
                 <Suspense>
                   <div className="">{children}</div>

@@ -37,3 +37,16 @@ export function getInitials(name: string): string {
     .toUpperCase()
     .slice(0, 2)
 }
+
+/**
+ * Resolves a Tailwind CSS variable (like '--primary') into its HSL components.
+ * This is useful for JavaScript libraries like Chart.js that can't parse CSS variables.
+ * @param variableName - The name of the CSS variable (e.g., '--primary').
+ * @returns A string in the format "H, S%, L%" or null if the variable is not found.
+ */
+export function getCssVariableHSL(variableName: string) {
+    if (typeof window === 'undefined') return null; // Guard for SSR
+    const style = getComputedStyle(document.documentElement);
+    const value = style.getPropertyValue(variableName).trim();
+    return value || null; // Returns something like "221.2 83.2% 53.3%"
+}
