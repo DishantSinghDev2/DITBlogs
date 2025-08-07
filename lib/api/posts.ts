@@ -101,7 +101,7 @@ export const getAllPosts = cache(
     // Cache featured posts
     if (featured && page === 1 && !category && !tag && !search) {
       await redis.set("featured_posts", JSON.stringify(result), {
-        ex: 60 * 60, // 1 hour
+        EX: 60 * 60, // 1 hour
       });
     }
 
@@ -172,7 +172,7 @@ export const getPostBySlug = cache(async (slug: string, userId?: string) => {
   // Cache the post *without* isBookmarked (since it's user-specific)
   const { isBookmarked: _, ...postToCache } = postWithComputed;
   await redis.set(`post:${slug}`, JSON.stringify(postToCache), {
-    ex: 60 * 60, // 1 hour
+    EX: 60 * 60, // 1 hour
   });
 
   return postWithComputed;
@@ -275,35 +275,43 @@ export const getFeaturedPosts = cache(async (limit = 6) => {
   return posts
 })
 
-// function to get comments by userId
-export const getCommentsByUserId = cache(async (userId: string, page = 1, limit = 10) => {
-  const skip = (page - 1) * limit
+// FIX: Renamed and enhanced for clarity and more data
+export const getUserCommentsActivity = cache(async (userId: string, page = 1, limit = 10) => {
+  const skip = (page - 1) * limit;
 
-  const comments = await db.comment.findMany({
-    where: {
-      userId,
-    },
-    include: {
-      post: {
-        select: {
-          id: true,
-          title: true,
-          slug: true,
+  // Fetch comments made by the user
+  const [comments, total] = await db.$transaction([
+    db.comment.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        content: true,
+        createdAt: true,
+        // Include the post it was on
+        post: {
+          select: {
+            title: true,
+            slug: true,
+          },
+        },
+        // Include the parent comment if this is a reply
+        parent: {
+          select: {
+            // Get the name of the user they replied to
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    skip,
-    take: limit,
-  })
-
-  const total = await db.comment.count({
-    where: {
-      userId,
-    },
-  })
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+    }),
+    db.comment.count({ where: { userId } }),
+  ]);
 
   return {
     comments,
@@ -313,5 +321,5 @@ export const getCommentsByUserId = cache(async (userId: string, page = 1, limit 
       limit,
       pages: Math.ceil(total / limit),
     },
-  }
-})
+  };
+});

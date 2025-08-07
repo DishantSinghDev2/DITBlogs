@@ -42,7 +42,7 @@ export function OrganizationSettings({ organization }: OrganizationSettingsProps
     async function onSubmit(data: OrgFormValues) {
         setIsUpdating(true);
         try {
-            const response = await fetch(`/api/organization/${organization.id}`, {
+            const response = await fetch(`/api/organizations/${organization.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
@@ -60,7 +60,7 @@ export function OrganizationSettings({ organization }: OrganizationSettingsProps
     async function handleRegenerateKey() {
         setIsUpdating(true);
         try {
-            const response = await fetch(`/api/organization/${organization.id}/regenerate-key`, { method: 'POST' });
+            const response = await fetch(`/api/organizations/${organization.id}/regenerate-key`, { method: 'POST' });
             if (!response.ok) throw new Error("Failed to regenerate key.");
             const { apiKey: newApiKey } = await response.json();
             setApiKey(newApiKey);
@@ -75,7 +75,7 @@ export function OrganizationSettings({ organization }: OrganizationSettingsProps
     async function handleDeleteOrganization() {
         setIsUpdating(true);
         try {
-            await fetch(`/api/organization/${organization.id}`, { method: 'DELETE' });
+            await fetch(`/api/organizations/${organization.id}`, { method: 'DELETE' });
             toast({ title: "Organization Deleted", description: "Your organization and all its data have been removed." });
             router.push('/onboarding'); // Redirect user to re-onboard
             router.refresh();

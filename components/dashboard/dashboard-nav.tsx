@@ -12,6 +12,8 @@ import {
   Bookmark,
   Building,
   Newspaper,
+  MessageSquareText,
+  BellRing,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@prisma/client"; // Import the enum
@@ -41,6 +43,18 @@ const navGroups = [
         title: "Create Post",
         href: "/dashboard/editor", // A dedicated editor page is cleaner
         icon: PenSquare,
+        roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
+      },
+      {
+        title: "Comments",
+        href: "/dashboard/comments", // A dedicated editor page is cleaner
+        icon: MessageSquareText,
+        roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
+      },
+      {
+        title: "Notfications",
+        href: "/dashboard/notifications", // A dedicated editor page is cleaner
+        icon: BellRing,
         roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
       },
     ],

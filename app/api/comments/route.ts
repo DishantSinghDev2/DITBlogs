@@ -126,18 +126,18 @@ export async function POST(req: NextRequest) {
     await redis.del(`post_comments:${postId}`)
 
     // Create notification for post author if it's not their own comment
+
     if (post.authorId !== session.user.id) {
       await db.notification.create({
         data: {
           type: "comment",
           title: "New Comment",
           message: `${session.user.name} commented on your post: "${post.title}"`,
-          user: {
-            connect: { id: post.authorId },
-          },
+          userId: post.authorId, // The recipient
+          actorId: session.user.id, // --- FIX: The user who performed the action ---
           relatedId: comment.id,
         },
-      })
+      });
     }
 
     // If it's a reply, notify the parent comment author
@@ -147,19 +147,20 @@ export async function POST(req: NextRequest) {
         include: { user: true },
       })
 
-      if (parentComment && parentComment.userId !== session.user.id) {
+      // Notify parent comment author on reply
+      if (parentId && parentComment && parentComment.userId !== session.user.id) {
         await db.notification.create({
           data: {
             type: "reply",
             title: "New Reply",
             message: `${session.user.name} replied to your comment on "${post.title}"`,
-            user: {
-              connect: { id: parentComment.userId },
-            },
+            userId: parentComment.userId, // The recipient
+            actorId: session.user.id, // --- FIX: The user who performed the action ---
             relatedId: comment.id,
           },
-        })
+        });
       }
+
     }
 
     return NextResponse.json(comment, { status: 201 })
@@ -173,52 +174,42 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE handler for removing a comment
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return new NextResponse("Unauthorized", { status: 401 });
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return new NextResponse("Comment ID is required", { status: 400 });
 
-    const { searchParams } = new URL(req.url)
-    const id = searchParams.get("id")
-
-    if (!id) {
-      return NextResponse.json({ error: "Comment ID is required" }, { status: 400 })
-    }
-
-    // Check if comment exists
     const comment = await db.comment.findUnique({
       where: { id },
-      include: { post: true },
-    })
+      include: { post: true, user: true },
+    });
+    if (!comment) return new NextResponse("Comment not found", { status: 404 });
 
-    if (!comment) {
-      return NextResponse.json({ error: "Comment not found" }, { status: 404 })
+    // --- FIX: New, context-aware permission logic ---
+    const isCommentAuthor = comment.userId === session.user.id;
+
+    // Fetch the current user's role within the post's organization
+    const currentUser = await db.user.findUnique({ where: { id: session.user.id }, select: { role: true, organizationId: true } });
+
+    // Check if the current user is an admin/editor of the organization the post belongs to
+    const isOrgAdminOrEditor =
+      currentUser?.organizationId === comment.post.organizationId &&
+      (currentUser.role === 'ORG_ADMIN' || currentUser.role === 'EDITOR');
+
+    if (!isCommentAuthor && !isOrgAdminOrEditor) {
+      return new NextResponse("Permission denied", { status: 403 });
     }
 
-    // Check if user is the comment author or post author or admin
-    const isCommentAuthor = comment.userId === session.user.id
-    const isPostAuthor = comment.post.authorId === session.user.id
-    const isAdmin = session.user.role === "admin"
+    await db.comment.delete({ where: { id } });
+    await redis.del(`post_comments:${comment.postId}`);
 
-    if (!isCommentAuthor && !isPostAuthor && !isAdmin) {
-      return NextResponse.json({ error: "Permission denied" }, { status: 403 })
-    }
-
-    // Delete comment
-    await db.comment.delete({
-      where: { id },
-    })
-
-    // Clear cache
-    await redis.del(`post_comments:${comment.postId}`)
-
-    return NextResponse.json({ message: "Comment deleted successfully" })
+    return new NextResponse("Comment deleted successfully");
   } catch (error) {
-    console.error("Error deleting comment:", error)
-    return NextResponse.json({ error: "Failed to delete comment" }, { status: 500 })
+    console.error("Error deleting comment:", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }
