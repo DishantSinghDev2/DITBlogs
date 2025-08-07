@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose"
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || "default-secret-key-change-in-production")
+const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || "default-secret-key-change-in-production")
 
 export async function generateToken(payload: any): Promise<string> {
   return await new SignJWT(payload)

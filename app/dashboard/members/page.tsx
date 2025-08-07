@@ -7,6 +7,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { UsersTable } from "@/components/admin/users-table"; // We'll update this component next
 import { getUserRoleInOrg } from "@/lib/api/user";
 import { getAllUsersInOrg, getPendingRequests } from "@/lib/api/admin"; // Import new function
+import { DashboardShell } from "@/components/dashboard/dashboard-shell-child";
 
 export default async function MembersPage({
   searchParams,
@@ -38,7 +39,7 @@ export default async function MembersPage({
   ]);
 
   return (
-    <div className="space-y-4">
+    <DashboardShell>
       <DashboardHeader
         heading="Member Management"
         text="Manage your organization's members and handle join requests."
@@ -49,6 +50,6 @@ export default async function MembersPage({
         pagination={membersData.pagination}
         pendingRequests={pendingRequests}
       />
-    </div>
+    </DashboardShell>
   );
 }

@@ -1,3 +1,4 @@
+// api/newsletter/unsubscrube/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import { verifyToken } from "@/lib/jwt"
 import { db } from "@/lib/db"

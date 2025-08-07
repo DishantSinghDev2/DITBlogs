@@ -7,6 +7,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { OrganizationSettings } from "@/components/dashboard/organization-settings";
 import { canUserPerformAction } from "@/lib/api/user";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell-child";
 
 export default async function OrgSettingsPage() {
   const session = await getServerSession(authOptions);
@@ -38,12 +39,12 @@ export default async function OrgSettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <DashboardShell>
       <DashboardHeader
         heading="Organization Settings"
         text="Manage your organization's details, API access, and more."
       />
       <OrganizationSettings organization={organization} />
-    </div>
+    </DashboardShell>
   );
 }

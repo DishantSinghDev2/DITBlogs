@@ -115,3 +115,112 @@ export async function sendInviteEmail({ to, organizationName }: SendInviteEmailO
         throw new Error("Failed to send invitation email.");
     }
 }
+
+
+
+interface SendNewsletterEmailOptions {
+    to: string;
+    subject: string;
+    organizationName: string;
+    posts: Array<{ title: string; slug: string; excerpt?: string | null }>;
+}
+
+export async function sendNewsletterEmail({ to, subject, organizationName, posts }: SendNewsletterEmailOptions) {
+    const unsubscribeToken = generateToken(to);
+    const unsubscribeUrl = `${process.env.NEXTAUTH_URL}/api/newsletter/unsubscribe?token=${unsubscribeToken}`;
+    const siteUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+    const postsHtml = posts.map(post => `
+        <div style="margin-bottom: 20px;">
+            <h3 style="margin: 0; font-size: 18px;">
+                <a href="${siteUrl}/blog/${post.slug}" style="color: #1a1a1a; text-decoration: none;">${post.title}</a>
+            </h3>
+            ${post.excerpt ? `<p style="margin: 5px 0 0; color: #555;">${post.excerpt}</p>` : ''}
+        </div>
+    `).join('');
+
+    const mailOptions = {
+        from: process.env.EMAIL_FROM,
+        to,
+        subject,
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+                <div style="background-color: #f8f8f8; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0; font-size: 24px; color: #333;">${organizationName}'s Weekly Digest</h1>
+                </div>
+                <div style="padding: 20px;">
+                    ${postsHtml}
+                </div>
+                <div style="background-color: #f8f8f8; padding: 20px; text-align: center; font-size: 12px; color: #888;">
+                    <p>You received this email because you subscribed to our newsletter.</p>
+                    <p><a href="${unsubscribeUrl}" style="color: #555; text-decoration: underline;">Unsubscribe</a></p>
+                </div>
+            </div>
+        `,
+    };
+
+    await transporter.sendMail(mailOptions);
+}
+
+
+interface SendWelcomeEmailOptions {
+    to: string;
+    organizationName: string;
+}
+
+export async function sendWelcomeEmail({ to, organizationName }: SendWelcomeEmailOptions) {
+    const unsubscribeToken = generateToken(to);
+    const unsubscribeUrl = `${process.env.NEXTAUTH_URL}/api/newsletter/unsubscribe?token=${unsubscribeToken}`;
+    const siteUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+    const mailOptions = {
+        from: process.env.EMAIL_FROM,
+        to,
+        subject: `Welcome to the ${organizationName} Newsletter!`,
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                
+                <!-- Header Image -->
+                <div style="text-align: center; background-color: #f4f4f7; padding: 40px 20px;">
+                    <h1 style="color: #1a1a1a; margin: 0; font-size: 28px;">Welcome Aboard!</h1>
+                </div>
+
+                <!-- Main Content -->
+                <div style="padding: 30px 20px; color: #333333; line-height: 1.6;">
+                    <h2 style="font-size: 20px; color: #1a1a1a;">Thanks for subscribing to the ${organizationName} newsletter!</h2>
+                    <p>We're thrilled to have you as part of our community. You're all set to receive the latest posts, news, and updates directly to your inbox.</p>
+                    
+                    <h3 style="font-size: 18px; color: #1a1a1a; border-bottom: 2px solid #e0e0e0; padding-bottom: 5px; margin-top: 30px;">What to Expect:</h3>
+                    <ul style="padding-left: 20px;">
+                        <li><strong>Weekly Digests:</strong> Get a roundup of our newest and most popular articles every week.</li>
+                        <li><strong>Exclusive Content:</strong> Access insights and articles available only to our subscribers.</li>
+                        <li><strong>No Spam:</strong> We respect your inbox and promise to only send you high-quality, relevant content.</li>
+                    </ul>
+
+                    <p style="margin-top: 30px;">In the meantime, you can check out our latest posts on our blog:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${siteUrl}/blog" style="background-color: #007bff; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                            Explore the Blog
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div style="background-color: #f4f4f7; padding: 20px; text-align: center; font-size: 12px; color: #888888;">
+                    <p>You received this email because you subscribed to our newsletter.</p>
+                    <p>Not your cup of tea? <a href="${unsubscribeUrl}" style="color: #555555; text-decoration: underline;">Unsubscribe here</a>.</p>
+                    <p>&copy; ${new Date().getFullYear()} ${organizationName}. All Rights Reserved.</p>
+                </div>
+            </div>
+        `,
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Welcome email sent successfully to ${to}`);
+    } catch (error) {
+        console.error(`Failed to send welcome email to ${to}:`, error);
+        // We throw the error to let the API route know that something went wrong.
+        throw new Error("The welcome email could not be sent.");
+    }
+}

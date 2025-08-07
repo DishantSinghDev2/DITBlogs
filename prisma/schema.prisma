@@ -76,8 +76,7 @@ model User {
   organization   Organization? @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)
 
   ownedOrganization Organization? @relation("OrganizationOwner")
-  invites           Invite[] @relation("UserInvites")
-
+  invites           Invite[]      @relation("UserInvites")
 
   accounts          Account[]
   sessions          Session[]
@@ -101,8 +100,9 @@ model Organization {
   plan             Plan     @default(FREE)
   monthlyPostViews Int      @default(0)
 
-  ownerId String @unique
-  owner   User   @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  ownerId     String                 @unique
+  subscribers Newsletter[]
+  owner       User                   @relation("OrganizationOwner", fields: [ownerId], references: [id])
 
   members            User[]              @relation("OrganizationMembers")
   posts              Post[]
@@ -120,40 +120,39 @@ enum InviteStatus {
 
 // In the MembershipRequest model, add a status field
 model MembershipRequest {
-  id             String           @id @default(cuid())
-  message        String?          @db.Text
+  id        String           @id @default(cuid())
+  message   String?          @db.Text
   // FIX: Change status to the enum to handle rejection
-  status         MembershipStatus @default(PENDING) 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  status    MembershipStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   userId         String
-  user           User             @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
+  user           User         @relation("UserRequests", fields: [userId], references: [id], onDelete: Cascade)
   organizationId String
-  organization   Organization     @relation("OrgRequests", fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation("OrgRequests", fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
 }
 
 // Add a new model for Invitations
 model Invite {
-  id             String       @id @default(cuid())
-  email          String       // The email of the person being invited
-  status         InviteStatus @default(PENDING)
-  createdAt      DateTime     @default(now())
-  expiresAt      DateTime
+  id        String       @id @default(cuid())
+  email     String // The email of the person being invited
+  status    InviteStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  expiresAt DateTime
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
+
   // Optional: Link to an existing user if they have an account
-  invitedUserId  String?      @unique 
-  invitedUser    User?        @relation("UserInvites", fields: [invitedUserId], references: [id], onDelete:SetNull)
+  invitedUserId String? @unique
+  invitedUser   User?   @relation("UserInvites", fields: [invitedUserId], references: [id], onDelete: SetNull)
 
   @@index([email])
   @@index([organizationId])
 }
-
 
 model VerificationToken {
   identifier String
@@ -194,6 +193,22 @@ model Post {
 
   @@index([organizationId])
 }
+
+model Newsletter {
+  id        String   @id @default(cuid())
+  email     String   @unique // Keep this unique for the whole platform
+  name      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // --- FIX: Add relation to Organization ---
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@index([organizationId])
+}
+
 
 model Category {
   id          String  @id @default(cuid())

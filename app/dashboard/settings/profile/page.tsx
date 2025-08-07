@@ -6,6 +6,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { UserSettings } from "@/components/dashboard/user-settings"
 import { getUserById } from "@/lib/api/user"
+import { DashboardShell } from "@/components/dashboard/dashboard-shell-child"
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions)
@@ -21,9 +22,9 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <DashboardShell>
       <DashboardHeader heading="Settings" text="Manage your account settings and preferences." />
       <UserSettings user={user} />
-    </div>
+    </DashboardShell>
   )
 }

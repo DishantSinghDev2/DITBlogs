@@ -7,6 +7,7 @@ import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
 import { getUserRoleInOrg } from "@/lib/api/user";
 import { getOrganizationAnalytics } from "@/lib/api/analytics";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell-child";
 
 export default async function AdminAnalyticsPage({
   searchParams,
@@ -38,11 +39,11 @@ export default async function AdminAnalyticsPage({
   const analyticsData = await getOrganizationAnalytics(orgId, from, to);
 
   return (
-    <>
+    <DashboardShell>
       <DashboardHeader
         heading="Organization Analytics"
         text="An overview of your organization's content and engagement." />
       <AnalyticsDashboard data={analyticsData} initialDateRange={{ from, to }} />
-    </>
+    </DashboardShell>
   );
 }

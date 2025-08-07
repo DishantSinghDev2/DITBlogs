@@ -11,6 +11,7 @@ import {
   PenSquare,
   Bookmark,
   Building,
+  Newspaper,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@prisma/client"; // Import the enum
@@ -51,6 +52,12 @@ const navGroups = [
         title: "Members",
         href: "/dashboard/members",
         icon: Users,
+        roles: [UserRole.ORG_ADMIN], // Only admins can see this
+      },
+      {
+        title: "Newsletters",
+        href: "/dashboard/newsletters",
+        icon: Newspaper,
         roles: [UserRole.ORG_ADMIN], // Only admins can see this
       },
       {

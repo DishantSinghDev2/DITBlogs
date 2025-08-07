@@ -176,13 +176,13 @@ export function AnalyticsDashboard({ data, initialDateRange }: AnalyticsDashboar
           </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-[100vw]">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 ">
         <Card className="lg:col-span-1">
           <CardHeader><CardTitle>Posts by Category</CardTitle></CardHeader>
           <CardContent className="h-[300px]"><Doughnut data={donutChartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }} /></CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 max-w-[100vw]">
           <CardHeader><CardTitle>Top Performing Members</CardTitle></CardHeader>
           <CardContent className="h-[300px]"><Bar data={barChartData} options={{ indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} /></CardContent>
         </Card>

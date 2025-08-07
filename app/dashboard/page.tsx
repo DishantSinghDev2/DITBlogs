@@ -10,6 +10,7 @@ import { DraftPosts } from "@/components/dashboard/draft-posts";
 import { getUserStats, getRecentPosts, getDraftPosts } from "@/lib/api/dashboard";
 import { InvitationDashboard } from "@/components/dashboard/invitation-dashboard";
 import { PendingDashboard } from "@/components/dashboard/pending-dashboard";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell-child";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -53,7 +54,7 @@ export default async function DashboardPage() {
     ]);
 
     return (
-      <>
+      <DashboardShell>
         <DashboardHeader
           heading="Dashboard"
           text="Welcome back! Here's an overview of your activity." />
@@ -64,7 +65,7 @@ export default async function DashboardPage() {
             <DraftPosts posts={draftPosts} />
           </div>
         </div>
-      </>
+      </DashboardShell>
     );
   }
 
@@ -72,7 +73,9 @@ export default async function DashboardPage() {
   const pendingInvite = userStatus.invites[0];
   if (pendingInvite) {
     return (
-      <InvitationDashboard invite={pendingInvite} />
+      <DashboardShell>
+        <InvitationDashboard invite={pendingInvite} />
+      </DashboardShell>
     );
   }
 
@@ -83,7 +86,9 @@ export default async function DashboardPage() {
     // This part handles the PENDING state.
     if (membershipRequest.status === 'PENDING') {
       return (
-        <PendingDashboard request={membershipRequest} />
+        <DashboardShell>
+          <PendingDashboard request={membershipRequest} />
+        </DashboardShell>
       );
     }
   }
