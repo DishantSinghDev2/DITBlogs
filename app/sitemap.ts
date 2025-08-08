@@ -6,9 +6,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Get all published posts
   const posts = await db.post.findMany({
-    where: {
-      published: true,
-    },
     select: {
       slug: true,
       updatedAt: true,
@@ -19,7 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const categories = await db.category.findMany({
     select: {
       slug: true,
-      updatedAt: true,
+      createdAt: true,
     },
   })
 
@@ -27,7 +24,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const tags = await db.tag.findMany({
     select: {
       slug: true,
-      updatedAt: true,
+      createdAt: true,
     },
   })
 
@@ -64,7 +61,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Category routes
   const categoryRoutes = categories.map((category) => ({
     url: `${baseUrl}/blog?category=${category.slug}`,
-    lastModified: category.updatedAt,
+    lastModified: category.createdAt,
     changeFrequency: "weekly" as const,
     priority: 0.7,
   }))
@@ -72,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Tag routes
   const tagRoutes = tags.map((tag) => ({
     url: `${baseUrl}/blog?tag=${tag.slug}`,
-    lastModified: tag.updatedAt,
+    lastModified: tag.createdAt,
     changeFrequency: "weekly" as const,
     priority: 0.6,
   }))

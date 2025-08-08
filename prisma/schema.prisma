@@ -89,10 +89,10 @@ model User {
   notifications     Notification[]      @relation("UserNotifications")
   // --- FIX: Add the back-relation ---
   actions           Notification[]      @relation("UserActions")
+  Draft             Draft[]
 
   @@index([email])
   @@index([organizationId])
-  Draft Draft[]
 }
 
 model Organization {
@@ -189,48 +189,47 @@ model Post {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  authorId   String
-  author     User       @relation(fields: [authorId], references: [id])
-  categoryId String?
-  category   Category?  @relation(fields: [categoryId], references: [id])
-  tags       Tag[]
-  comments   Comment[]
-  views      PostView[]
-  bookmarks  Bookmark[]
+  authorId       String
+  author         User         @relation(fields: [authorId], references: [id])
+  categoryId     String?
+  category       Category?    @relation(fields: [categoryId], references: [id])
+  tags           Tag[]
+  comments       Comment[]
+  views          PostView[]
+  bookmarks      Bookmark[]
 
   // --- NEW: Relation to its draft versions ---
-  drafts     Draft[]
+  drafts Draft[]
 
   @@index([organizationId])
 }
 
-
 // --- NEW: The Draft Model ---
 // This model holds all work-in-progress content.
 model Draft {
-  id              String    @id @default(cuid())
+  id              String   @id @default(cuid())
   title           String
-  slug            String    // Slugs can be non-unique here until publish
+  slug            String // Slugs can be non-unique here until publish
   content         Json
-  excerpt         String?   @db.Text
+  excerpt         String?  @db.Text
   featuredImage   String?
   metaTitle       String?
-  metaDescription String?   @db.Text
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  metaDescription String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id])
-  authorId   String
-  author     User       @relation(fields: [authorId], references: [id])
-  categoryId String?
-  category   Category?  @relation(fields: [categoryId], references: [id])
-  tags       Tag[]
+  authorId       String
+  author         User         @relation(fields: [authorId], references: [id])
+  categoryId     String?
+  category       Category?    @relation(fields: [categoryId], references: [id])
+  tags           Tag[]
 
   // --- NEW: Relation back to a live Post ---
   // This will be set if the draft is an edit of an already published post.
-  postId     String?
-  post       Post?      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String?
+  post   Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([authorId])
   @@index([postId])
@@ -238,18 +237,19 @@ model Draft {
 
 // FIX: Modify the Category model to belong to an Organization
 model Category {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   name        String
   slug        String
   description String?
   posts       Post[]
+  createdAt   DateTime @default(now())
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  Draft          Draft[]
 
   @@unique([organizationId, slug]) // A slug must be unique within an organization
   @@index([organizationId])
-  Draft Draft[]
 }
 
 // FIX: Modify the Tag model to belong to an Organization
@@ -261,11 +261,12 @@ model Tag {
 
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  Draft          Draft[]
+  createdAt      DateTime     @default(now())
 
   @@unique([organizationId, name]) // A tag name must be unique within an organization
   @@unique([organizationId, slug])
   @@index([organizationId])
-  Draft Draft[]
 }
 
 model Newsletter {
@@ -280,8 +281,8 @@ model Newsletter {
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@index([organizationId])
   @@unique([email, organizationId], name: "email_organizationId")
+  @@index([organizationId])
 }
 
 model Comment {
