@@ -76,7 +76,7 @@ export const canUserPerformAction = cache(
   async (
     userId: string,
     // --- FIX: Add the new permission ---
-    action: "post:create" | "post:edit" | "post:delete" | "draft:edit" | "org:manage_members" | "org:edit_settings",
+    action: "post:create" | "post:edit" | "post:delete" | "draft:edit" | "org:manage_members" | "org:edit_settings" | "org:manage_categories",
     resourceId: string 
   ): Promise<boolean> => {
     if (!userId || !action || !resourceId) return false;
@@ -116,8 +116,8 @@ export const canUserPerformAction = cache(
 
     // --- FIX: Add the new permission to the roles ---
     const permissions: Record<UserRole, string[]> = {
-      ORG_ADMIN: [ "post:create", "post:edit", "post:delete", "draft:edit", "org:manage_members", "org:edit_settings" ],
-      EDITOR: ["post:create", "post:edit", "post:delete", "draft:edit" ],
+      ORG_ADMIN: [ "post:create", "post:edit", "post:delete", "draft:edit", "org:manage_members", "org:edit_settings", "org:manage_categories"  ],
+      EDITOR: ["post:create", "post:edit", "post:delete", "draft:edit", "org:manage_categories"  ],
       WRITER: ["post:create", "post:edit", "post:delete", "draft:edit"],
     };
     

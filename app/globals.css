@@ -92,3 +92,48 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Apply to scrollable containers: sidebar, content */
+.scrollable {
+  overflow: auto;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: transparent transparent; /* Hide by default */
+  transition: scrollbar-color 0.3s ease;
+}
+
+/* Show scrollbar only on hover */
+.scrollable:hover {
+  scrollbar-color: var(--scroll-thumb-color) transparent;
+}
+
+/* Chrome/Edge/Safari (Webkit Browsers) */
+.scrollable::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollable::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollable::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+}
+
+.scrollable:hover::-webkit-scrollbar-thumb {
+  background-color: var(--scroll-thumb-color);
+}
+
+/* Scroll thumb color for dark/light themes */
+:root {
+  --scroll-thumb-color: rgba(0, 0, 0, 0.2); /* Light default */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --scroll-thumb-color: rgba(255, 255, 255, 0.2); /* Dark mode */
+  }
+}

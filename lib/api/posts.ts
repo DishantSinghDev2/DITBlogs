@@ -22,7 +22,6 @@ export const getAllPosts = cache(
 
     // Build the query
     const query: any = {
-      published: true,
     };
 
     if (featured) {
@@ -268,8 +267,7 @@ export const getUserContent = cache(async (
 
 export const getRelatedPosts = cache(async (postId: string, categoryId?: string | null) => {
   const query: any = {
-    id: { not: postId },
-    published: true,
+    id: { not: postId }
   }
 
   if (categoryId) {

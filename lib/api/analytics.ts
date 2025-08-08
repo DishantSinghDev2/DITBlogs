@@ -25,7 +25,7 @@ export const getOrganizationAnalytics = cache(async (organizationId: string, fro
   ] = await Promise.all([
     // Overview Cards
     db.user.count({ where: { organizationId } }),
-    db.post.count({ where: { organizationId, published: true } }),
+    db.post.count({ where: { organizationId } }),
     db.postView.count({ where: { post: { organizationId } } }),
     db.comment.count({ where: { post: { organizationId } } }),
     
@@ -37,10 +37,10 @@ export const getOrganizationAnalytics = cache(async (organizationId: string, fro
     db.post.groupBy({
       by: ["categoryId"],
       _count: true,
-      where: { organizationId, published: true, categoryId: { not: null } },
+      where: { organizationId, categoryId: { not: null } },
     }),
     db.post.findMany({
-      where: { organizationId, published: true },
+      where: { organizationId },
       select: { id: true, title: true, slug: true, _count: { select: { views: true } } },
       orderBy: { views: { _count: "desc" } },
       take: 5,
