@@ -92,6 +92,7 @@ model User {
 
   @@index([email])
   @@index([organizationId])
+  Draft Draft[]
 }
 
 model Organization {
@@ -116,6 +117,8 @@ model Organization {
   tags               Tag[]
 
   Invite Invite[]
+
+  Draft Draft[]
 }
 
 // Add a new enum for InviteStatus
@@ -176,30 +179,61 @@ model Post {
   content         Json
   excerpt         String?   @db.Text
   featuredImage   String?
-  published       Boolean   @default(false)
-  // ADDED: Field for featured posts
-  featured        Boolean   @default(false)
+  // 'published' boolean is no longer needed here. If it exists in Post, it's published.
   metaTitle       String?
   metaDescription String?   @db.Text
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   publishedAt     DateTime?
-  readingTime     Int?
+  featured        Boolean   @default(false)
 
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  authorId       String
-  author         User         @relation(fields: [authorId], references: [id])
-  categoryId     String?
-  tags           Tag[]
-  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  comments       Comment[]
-  // ADDED: Relations for views and bookmarks
-  views          PostView[]
-  bookmarks      Bookmark[]
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  authorId   String
+  author     User       @relation(fields: [authorId], references: [id])
+  categoryId String?
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  tags       Tag[]
+  comments   Comment[]
+  views      PostView[]
+  bookmarks  Bookmark[]
 
+  // --- NEW: Relation to its draft versions ---
+  drafts     Draft[]
 
   @@index([organizationId])
+}
+
+
+// --- NEW: The Draft Model ---
+// This model holds all work-in-progress content.
+model Draft {
+  id              String    @id @default(cuid())
+  title           String
+  slug            String    // Slugs can be non-unique here until publish
+  content         Json
+  excerpt         String?   @db.Text
+  featuredImage   String?
+  metaTitle       String?
+  metaDescription String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  authorId   String
+  author     User       @relation(fields: [authorId], references: [id])
+  categoryId String?
+  category   Category?  @relation(fields: [categoryId], references: [id])
+  tags       Tag[]
+
+  // --- NEW: Relation back to a live Post ---
+  // This will be set if the draft is an edit of an already published post.
+  postId     String?
+  post       Post?      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([postId])
 }
 
 // FIX: Modify the Category model to belong to an Organization
@@ -215,6 +249,7 @@ model Category {
 
   @@unique([organizationId, slug]) // A slug must be unique within an organization
   @@index([organizationId])
+  Draft Draft[]
 }
 
 // FIX: Modify the Tag model to belong to an Organization
@@ -229,6 +264,7 @@ model Tag {
 
   @@unique([organizationId, name]) // A tag name must be unique within an organization
   @@index([organizationId])
+  Draft Draft[]
 }
 
 model Newsletter {
@@ -244,6 +280,7 @@ model Newsletter {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@unique([email, organizationId], name: "email_organizationId")
 }
 
 model Comment {

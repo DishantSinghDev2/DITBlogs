@@ -23,8 +23,8 @@ export default async function EditorPage() {
   if (!canCreatePost) redirect("/dashboard");
 
   // FIX: Fetch the user's existing drafts
-  const userDrafts = await db.post.findMany({
-      where: { authorId: session.user.id, organizationId: orgId, published: false },
+  const userDrafts = await db.draft.findMany({
+      where: { authorId: session.user.id, organizationId: orgId },
       orderBy: { updatedAt: 'desc' }
   });
 

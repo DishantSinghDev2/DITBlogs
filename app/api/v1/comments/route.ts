@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     });
     
     try {
-       await redis.set(cacheKey, JSON.stringify(comments), { ex: 600 }); // Cache for 10 minutes
+       await redis.set(cacheKey, JSON.stringify(comments), { EX: 600 }); // Cache for 10 minutes
     } catch(e) { console.error(e); }
     
     return NextResponse.json(comments);

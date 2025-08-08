@@ -7,63 +7,99 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { DashboardHeader } from "@/components/dashboard/dashboard-header";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell-child";
 import { BlogEditor } from "@/components/editor/blog-editor";
-import { canUserPerformAction } from "@/lib/api/user"; // Your permission checker
+import { canUserPerformAction } from "@/lib/api/user";
 
-// The page is now an async Server Component
-export default async function EditPostPage({ params }: { params: { id: string } }) {
+// This page now handles editing EITHER a Post or a Draft
+export default async function EditContentPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-
   if (!session?.user?.id) {
     redirect("/auth/login");
   }
 
-  // 1. Security Check: Use your robust permission checker.
-  // This function should internally verify that the post belongs to the user's organization
-  // and that the user's role allows editing.
-  const canEdit = await canUserPerformAction(session.user.id, "post:edit", params.id);
+  const contentId = params.id;
+  let contentData: any = null;
+  let contentType: 'post' | 'draft' | null = null;
+
+  // 1. Determine if the ID belongs to a Post or a Draft
+  const post = await db.post.findUnique({ where: { id: contentId } });
+
+  if (post) {
+    contentType = 'post';
+    contentData = post;
+  } else {
+    const draft = await db.draft.findUnique({ where: { id: contentId } });
+    if (draft) {
+      contentType = 'draft';
+      contentData = draft;
+    }
+  }
+
+  // If content is not found in either table, it's a 404
+  if (!contentType || !contentData) {
+    return notFound();
+  }
+
+  // 2. Perform the correct permission check based on the content type
+  let canEdit = false;
+  if (contentType === 'post') {
+    // A 'post:edit' implies creating a new draft from the post, so we check that perm.
+    canEdit = await canUserPerformAction(session.user.id, "post:edit", contentId);
+  } else { // contentType === 'draft'
+    canEdit = await canUserPerformAction(session.user.id, "draft:edit", contentId);
+  }
 
   if (!canEdit) {
-    // If they don't have permission, don't even let them know the post exists.
-    // Redirecting is a safe and user-friendly option.
-    redirect("/dashboard");
-  }
-  
-  // 2. Fetch the full post data and the user's organizationId
-  // We can fetch user data separately or trust the permission check has done its job.
-  // For passing the prop, we need the organizationId explicitly.
-  const [post, user] = await Promise.all([
-    db.post.findUnique({
-      where: { id: params.id },
-    }),
-    db.user.findUnique({
-        where: { id: session.user.id },
-        select: { organizationId: true }
-    })
-  ]);
-
-  // 3. Handle the case where the post might not be found
-  if (!post) {
-    // This will render the not-found.tsx file, which is the idiomatic way
-    notFound();
-  }
-  
-  // A final check in case the user has no organization set
-  if (!user?.organizationId) {
-    redirect('/dashboard?error=no_organization');
+    redirect("/dashboard?error=permission_denied");
   }
 
-  // 4. Render the page with all necessary data passed as props
+  // 3. Handle the "Edit a Live Post" workflow
+  // If the user is trying to edit a live post, we must create a draft copy for them.
+  if (contentType === 'post') {
+    const newDraft = await db.draft.create({
+      data: {
+        title: contentData.title,
+        slug: contentData.slug,
+        content: contentData.content,
+        excerpt: contentData.excerpt,
+        featuredImage: contentData.featuredImage,
+        metaTitle: contentData.metaTitle,
+        metaDescription: contentData.metaDescription,
+        authorId: contentData.authorId,
+        organizationId: contentData.organizationId,
+        categoryId: contentData.categoryId,
+        postId: contentData.id, // Link this draft back to the original post
+      },
+    });
+    // Redirect the user to the new draft's editor page.
+    // The user will now safely edit a copy, not the live post.
+    return redirect(`/dashboard/editor/${newDraft.id}`);
+  }
+
+  // 4. If we are here, it means the user is editing a DRAFT. Fetch organization details.
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      organization: { select: { plan: true } },
+    },
+  });
+
+  if (!user?.organization) {
+    redirect("/dashboard?error=no_organization");
+  }
+
+  // 5. Render the editor with the DRAFT data
   return (
     <DashboardShell>
       <DashboardHeader
-        heading="Edit Post"
-        text="Make changes to your existing blog post."
+        heading="Edit Draft"
+        text="Make changes to your draft before publishing."
       />
-      <BlogEditor 
-        // Pass the full post object to populate the editor fields
-        post={post} 
-        // CRUCIAL: Pass the organizationId for the save/update logic
-        organizationId={user.organizationId}
+      <BlogEditor
+        // Pass the full DRAFT object
+        post={contentData}
+        // Pass the orgId from the draft itself
+        organizationId={contentData.organizationId}
+        organizationPlan={user.organization.plan}
       />
     </DashboardShell>
   );

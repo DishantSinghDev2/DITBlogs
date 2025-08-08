@@ -20,7 +20,7 @@ export const getUserStats = cache(async (organizationId: string) => {
     db.comment.count({
       where: { post: { organizationId } },
     }),
-    db.post.count({
+    db.draft.count({
       where: { organizationId, },
     })
   ]);
@@ -37,7 +37,6 @@ export const getRecentPosts = cache(async (organizationId: string) => {
   const posts = await db.post.findMany({
     where: {
       organizationId,
-      published: true,
     },
     // FIX: Update the 'select' and 'include' clauses
     select: {
@@ -77,10 +76,9 @@ export const getRecentPosts = cache(async (organizationId: string) => {
 export const getDraftPosts = cache(async (organizationId: string) => {
   if (!organizationId) return [];
 
-  const posts = await db.post.findMany({
+  const posts = await db.draft.findMany({
     where: {
       organizationId,
-      published: false,
     },
     select: {
       id: true,

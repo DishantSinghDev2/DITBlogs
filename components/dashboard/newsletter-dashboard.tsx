@@ -28,8 +28,9 @@ export function NewsletterDashboard({ initialSubscribers }: { initialSubscribers
                 body: JSON.stringify({ email }),
             });
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || "Failed to add subscriber.");
+                const error = await response.text();
+                toast({ title: "Error", description: error, variant: "destructive" });
+                return;
             }
             toast({ title: "Subscriber Added" });
             setEmail("");
@@ -49,7 +50,7 @@ export function NewsletterDashboard({ initialSubscribers }: { initialSubscribers
                     <CardTitle>Active Subscribers</CardTitle>
                     <CardDescription>This list will receive your weekly post digests.</CardDescription>
                 </div>
-                <Button onClick={() => setIsAddDialogOpen(true)}><UserPlus className="mr-2 h-4 w-4"/>Add Subscriber</Button>
+                <Button onClick={() => setIsAddDialogOpen(true)}><UserPlus className="mr-2 h-4 w-4" />Add Subscriber</Button>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -70,7 +71,7 @@ export function NewsletterDashboard({ initialSubscribers }: { initialSubscribers
                 </Table>
             </CardContent>
 
-             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogContent>
                     <DialogHeader><DialogTitle>Add New Subscriber</DialogTitle><DialogDescription>Enter the email address to add to your newsletter.</DialogDescription></DialogHeader>
                     <form onSubmit={handleAddSubscriber} className="space-y-4 pt-4">

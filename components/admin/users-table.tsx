@@ -169,9 +169,9 @@ export function UsersTable({ users, pagination, pendingRequests }: UsersTablePro
   }
 
   // FIX: Update navigation paths to point to /dashboard/members
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    router.push(`/dashboard/members?search=${encodeURIComponent(searchQuery)}${roleFilter ? `&role=${roleFilter}` : ""}`);
+  function handleSearch(value: string) {
+    setSearchQuery(value)
+    router.push(`/dashboard/members?search=${encodeURIComponent(value)}${roleFilter ? `&role=${roleFilter}` : ""}`);
   }
 
   function handleRoleFilterChange(value: string) {
@@ -181,7 +181,6 @@ export function UsersTable({ users, pagination, pendingRequests }: UsersTablePro
   }
 
   function clearFilters() {
-    setSearchQuery("");
     setRoleFilter("");
     router.push("/dashboard/members");
   }
@@ -205,18 +204,17 @@ export function UsersTable({ users, pagination, pendingRequests }: UsersTablePro
       <TabsContent value="members">
         <div className="space-y-4">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <form onSubmit={handleSearch} className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Input
                 placeholder="Search users..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full md:w-[300px]"
+                onChange={(e) => handleSearch(e.target.value)}
+                className="w-full lg:w-[300px]"
               />
               <Button type="submit" size="sm">
                 <Search className="h-4 w-4" />
-                <span className="sr-only md:not-sr-only md:ml-2">Search</span>
               </Button>
-            </form>
+            </div>
             <div className="flex items-center gap-2">
               <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
                 <SelectTrigger className="w-[180px]">
@@ -229,10 +227,9 @@ export function UsersTable({ users, pagination, pendingRequests }: UsersTablePro
                   <SelectItem value={UserRole.WRITER}>Writer</SelectItem>
                 </SelectContent>
               </Select>
-              {(searchQuery || roleFilter) && (
+              {(roleFilter) && (
                 <Button variant="ghost" size="sm" onClick={clearFilters}>
                   <X className="mr-2 h-4 w-4" />
-                  Clear filters
                 </Button>
               )}
             </div>

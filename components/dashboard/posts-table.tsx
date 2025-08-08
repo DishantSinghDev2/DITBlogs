@@ -3,8 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { formatDistanceToNow } from "date-fns"
-import { MoreHorizontal, Edit, Trash2, Eye, EyeOff, Star, StarOff } from "lucide-react"
+import { format, formatDistanceToNow } from "date-fns"
+import { MoreHorizontal, Edit, Trash2, Eye, EyeOff, Star, StarOff, FileSignature, EyeIcon, Search } from "lucide-react"
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -28,245 +28,161 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Pagination } from "@/components/ui/pagination"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "../ui/input"
 
 interface PostsTableProps {
-  posts: any[]
+  content: any[]
   pagination: {
     total: number
     page: number
     limit: number
     pages: number
-  }
+  },
+  currentStatus: 'published' | 'draft';
+  query?: string;
 }
 
-export function PostsTable({ posts, pagination }: PostsTableProps) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [postToDelete, setPostToDelete] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+export function PostsTable({ content, pagination, currentStatus, query }: PostsTableProps) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [contentToDelete, setContentToDelete] = useState<{ id: string, type: 'post' | 'draft' } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(query || "");
 
-  async function handleDeletePost() {
-    if (!postToDelete) return
 
-    setIsLoading(true)
+  // --- Handlers ---
+  const handleTabChange = (value: string) => {
+    router.push(`/dashboard/posts?status=${value}`);
+  };
+
+  const handleDelete = async () => {
+    if (!contentToDelete) return;
+    setIsLoading(true);
+
+    // The API endpoint depends on whether we are deleting a Post or a Draft
+    const apiPath = contentToDelete.type === 'post'
+      ? `/api/posts/${contentToDelete.id}`
+      : `/api/drafts/${contentToDelete.id}`; // You'll need to create this simple DELETE endpoint
 
     try {
-      const response = await fetch(`/api/posts/${postToDelete}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to delete post")
-      }
-
-      toast({
-        title: "Post deleted",
-        description: "Your post has been deleted successfully.",
-      })
-
-      router.refresh()
+      const response = await fetch(apiPath, { method: "DELETE" });
+      if (!response.ok) throw new Error(`Failed to delete ${contentToDelete.type}`);
+      toast({ title: `${contentToDelete.type.charAt(0).toUpperCase() + contentToDelete.type.slice(1)} Deleted` });
+      router.refresh();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete post. Please try again.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", variant: "destructive" });
     } finally {
-      setIsLoading(false)
-      setIsDeleteDialogOpen(false)
-      setPostToDelete(null)
+      setIsLoading(false);
+      setIsDeleteDialogOpen(false);
+      setContentToDelete(null);
+    }
+  };
+
+  const handleUnpublish = async (postId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/posts/${postId}/unpublish`, { method: "POST" });
+      if (!response.ok) throw new Error("Failed to unpublish post.");
+      toast({ title: "Post Unpublished", description: "The post has been moved to your drafts." });
+      router.refresh();
+    } catch (error) {
+      toast({ title: "Error", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
   }
 
-  async function handleTogglePublish(id: string, currentStatus: boolean) {
-    setIsLoading(true)
 
+  const handlePublish = async (postId: string) => {
+    setIsLoading(true);
     try {
-      const response = await fetch(`/api/posts/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id,
-          published: !currentStatus,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to update post")
-      }
-
-      toast({
-        title: currentStatus ? "Post unpublished" : "Post published",
-        description: currentStatus ? "Your post has been unpublished." : "Your post has been published.",
-      })
-
-      router.refresh()
+      const response = await fetch(`/api/posts/${postId}/publish`, { method: "POST" });
+      if (!response.ok) throw new Error("Failed to Publish post.");
+      toast({ title: "Post Published", description: "The post has been moved to your posts." });
+      router.refresh();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update post. Please try again.",
-        variant: "destructive",
-      })
+      toast({ title: "Error", variant: "destructive" });
     } finally {
-      setIsLoading(false)
-    }
-  }
-
-  async function handleToggleFeatured(id: string, currentStatus: boolean) {
-    setIsLoading(true)
-
-    try {
-      const response = await fetch(`/api/posts/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id,
-          featured: !currentStatus,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to update post")
-      }
-
-      toast({
-        title: currentStatus ? "Post unfeatured" : "Post featured",
-        description: currentStatus
-          ? "Your post has been removed from featured posts."
-          : "Your post has been added to featured posts.",
-      })
-
-      router.refresh()
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update post. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
   return (
-    <div className="space-y-4">
+    <Tabs value={currentStatus} onValueChange={handleTabChange} className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="published"><Eye className="mr-2 h-4 w-4" />Published</TabsTrigger>
+        <TabsTrigger value="draft"><FileSignature className="mr-2 h-4 w-4" />Drafts</TabsTrigger>
+      </TabsList>
+
+      <div
+        className="flex items-center gap-2"
+      >
+        <Input
+          placeholder="Search posts..."
+          onChange={(e) => {
+            const params = new URLSearchParams(window.location.search);
+            params.set("query", e.target.value);
+            router.push(`/dashboard/posts?${params.toString()}`);
+          }}
+          className="w-full md:w-[300px]"
+        />
+        <Button type="submit" size="sm">
+          <Search className="h-4 w-4" />
+        </Button>
+      </div>
+
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead className="hidden md:table-cell">Category</TableHead>
-              <TableHead className="hidden md:table-cell">Status</TableHead>
-              <TableHead className="hidden md:table-cell">Date</TableHead>
+              <TableHead className="hidden md:table-cell">{currentStatus === 'published' ? 'Published' : 'Last Updated'}</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {posts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  No posts found. Create your first post!
-                </TableCell>
-              </TableRow>
+            {content.length === 0 ? (
+              <TableRow><TableCell colSpan={4} className="text-center h-24">No {currentStatus} content found.</TableCell></TableRow>
             ) : (
-              posts.map((post) => (
-                <TableRow key={post.id}>
-                  <TableCell>
-                    <div className="font-medium">{post.title}</div>
-                    <div className="hidden text-sm text-muted-foreground md:hidden">
-                      {post.category?.name || "Uncategorized"}
-                    </div>
-                  </TableCell>
+              content.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.title || "Untitled"}</TableCell>
+                  <TableCell className="hidden md:table-cell">{item.category?.name || "N/A"}</TableCell>
                   <TableCell className="hidden md:table-cell">
-                    {post.category ? (
-                      <Badge variant="outline">{post.category.name}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">Uncategorized</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {post.published ? <Badge>Published</Badge> : <Badge variant="outline">Draft</Badge>}
-                    {post.featured && (
-                      <Badge variant="secondary" className="ml-2">
-                        Featured
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {formatDistanceToNow(new Date(post.createdAt), {
-                      addSuffix: true,
-                    })}
+                    {format(new Date(item.publishedAt || item.updatedAt), 'LLL dd, yyyy')}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Actions</span>
-                        </Button>
-                      </DropdownMenuTrigger>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/blog/${post.slug}`} target="_blank">
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/editor/${post.id}`}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleTogglePublish(post.id, post.published)}
-                          disabled={isLoading}
-                        >
-                          {post.published ? (
+                        {currentStatus === 'published' && (
+                          <DropdownMenuItem asChild><Link href={`/blog/${item.slug}`} target="_blank"><Eye className="mr-2 h-4 w-4" />View Live</Link></DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem asChild><Link href={`/dashboard/editor/${item.id}`}><Edit className="mr-2 h-4 w-4" />Edit</Link></DropdownMenuItem>
+
+                        <DropdownMenuItem onClick={() => {
+                          if (currentStatus === "published") handleUnpublish(item.id); else handlePublish(item.id)
+                        }} disabled={isLoading}>
+                          {currentStatus === 'published' ? (
                             <>
-                              <EyeOff className="mr-2 h-4 w-4" />
-                              Unpublish
+                              <EyeOff className="mr-2 h-4 w-4" />Unpublish
                             </>
                           ) : (
                             <>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Publish
+                              <EyeIcon className="mr-2 h-4 w-4" />Publish
                             </>
                           )}
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleToggleFeatured(post.id, post.featured)}
-                          disabled={isLoading}
-                        >
-                          {post.featured ? (
-                            <>
-                              <StarOff className="mr-2 h-4 w-4" />
-                              Unfeature
-                            </>
-                          ) : (
-                            <>
-                              <Star className="mr-2 h-4 w-4" />
-                              Feature
-                            </>
-                          )}
-                        </DropdownMenuItem>
+
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setPostToDelete(post.id)
-                            setIsDeleteDialogOpen(true)
-                          }}
-                          className="text-red-600"
-                          disabled={isLoading}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          setIsDeleteDialogOpen(true)
+                          setContentToDelete({ id: item.id, type: currentStatus === 'published' ? 'post' : 'draft' })
+                        }} className="text-red-600" disabled={isLoading}><Trash2 className="mr-2 h-4 w-4" />Delete</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -276,6 +192,7 @@ export function PostsTable({ posts, pagination }: PostsTableProps) {
           </TableBody>
         </Table>
       </div>
+
 
       {pagination.pages > 1 && (
         <Pagination
@@ -295,12 +212,12 @@ export function PostsTable({ posts, pagination }: PostsTableProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeletePost} disabled={isLoading}>
+            <AlertDialogAction onClick={handleDelete} disabled={isLoading}>
               {isLoading ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Tabs>
   )
 }

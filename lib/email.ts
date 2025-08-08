@@ -126,7 +126,7 @@ interface SendNewsletterEmailOptions {
 }
 
 export async function sendNewsletterEmail({ to, subject, organizationName, posts }: SendNewsletterEmailOptions) {
-    const unsubscribeToken = generateToken(to);
+    const unsubscribeToken = await generateToken({ email: to }); // ✅ await and correct payload
     const unsubscribeUrl = `${process.env.NEXTAUTH_URL}/api/newsletter/unsubscribe?token=${unsubscribeToken}`;
     const siteUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 
@@ -169,7 +169,7 @@ interface SendWelcomeEmailOptions {
 }
 
 export async function sendWelcomeEmail({ to, organizationName }: SendWelcomeEmailOptions) {
-    const unsubscribeToken = generateToken(to);
+    const unsubscribeToken = await generateToken({ email: to }); // ✅ await and correct payload
     const unsubscribeUrl = `${process.env.NEXTAUTH_URL}/api/newsletter/unsubscribe?token=${unsubscribeToken}`;
     const siteUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
 

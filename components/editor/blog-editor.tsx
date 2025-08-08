@@ -276,11 +276,13 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
   const [tagInput, setTagInput] = useState("");
   const [tags, setTags] = useState<string[]>(post?.tags || []);
   const planLimits = PLAN_LIMITS[organizationPlan]; // You'll need to pass the org's plan to the editor
+  const [isPublishedVersion, setIsPublishedVersion] = useState(!!post); // Is this an edit of a live post?
+
 
   useEffect(() => {
     // Fetch categories for the dropdown
     const fetchCategories = async () => {
-      const response = await fetch('/api/organization/categories');
+      const response = await fetch('/api/organizations/categories');
       if (response.ok) setCategories(await response.json());
     };
     fetchCategories();
@@ -441,10 +443,10 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
         savedDraft = await response.json();
       } else {
         // Create new draft
-        const response = await fetch('/api/posts', {
+        const response = await fetch('/api/drafts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, published: false }),
+          body: JSON.stringify({ ...payload }),
         });
         if (!response.ok) throw new Error("Failed to create draft.");
         savedDraft = await response.json();
@@ -502,13 +504,11 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
     try {
       const finalDraftId = currentDraftId || post?.id;
       if (!finalDraftId) throw new Error("No draft to publish.");
-
-      const response = await fetch(`/api/posts/${finalDraftId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...values, published: true }),
+      const response = await fetch(`/api/posts/${currentDraftId}/publish`, {
+        method: 'POST',
       });
       if (!response.ok) throw new Error("Failed to publish post.");
+
       toast({ title: "Post Published!", description: "Your post is now live." });
       router.push('/dashboard/posts');
       router.refresh();
@@ -849,8 +849,8 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
               {saveStatus === 'error' && <span className="text-destructive">Save failed</span>}
             </div>
             <Button type="button" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
-              {isSubmitting ? "Publishing..." : <><Save className="mr-2 h-4 w-4" /> {post?.published ? 'Update Post' : 'Publish'}</>}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Publishing..." : <><Save className="mr-2 h-4 w-4" /> {post ? 'Update Post' : 'Publish'}</>}
             </Button>
           </div>
         </form>

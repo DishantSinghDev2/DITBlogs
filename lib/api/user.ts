@@ -75,69 +75,57 @@ export const getUserRoleInOrg = cache(
 export const canUserPerformAction = cache(
   async (
     userId: string,
-    action: "post:create" | "post:edit" | "post:delete" | "org:manage_members" | "org:edit_settings",
-    resourceId: string // This will be organizationId for 'post:create' or postId for others
+    // --- FIX: Add the new permission ---
+    action: "post:create" | "post:edit" | "post:delete" | "draft:edit" | "org:manage_members" | "org:edit_settings",
+    resourceId: string 
   ): Promise<boolean> => {
     if (!userId || !action || !resourceId) return false;
 
     let organizationId: string | null = null;
-    let postAuthorId: string | null = null;
+    let authorId: string | null = null; // Use a generic authorId
 
-    // --- FIX: Reworked logic to handle different actions ---
-    if (action === "post:create") {
-      // For creating a post, the resourceId IS the organizationId.
-      organizationId = resourceId;
+    // --- FIX: Add logic for the new draft:edit action ---
+    if (action === "draft:edit") {
+        const draft = await db.draft.findUnique({
+            where: { id: resourceId },
+            select: { organizationId: true, authorId: true },
+        });
+        if (!draft) return false;
+        organizationId = draft.organizationId;
+        authorId = draft.authorId;
     } else if (action === "post:edit" || action === "post:delete") {
-      // For editing/deleting, we need to find the post's organization.
-      const post = await db.post.findUnique({
-        where: { id: resourceId },
-        select: { organizationId: true, authorId: true },
-      });
-      if (!post) return false; // Post doesn't exist
-      organizationId = post.organizationId;
-      postAuthorId = post.authorId;
-    } else if (action.startsWith("org:")) {
-      // For organization actions, the resourceId IS the organizationId.
-      organizationId = resourceId;
+        const post = await db.post.findUnique({
+            where: { id: resourceId },
+            select: { organizationId: true, authorId: true },
+        });
+        if (!post) return false;
+        organizationId = post.organizationId;
+        authorId = post.authorId;
+    } else if (action === "post:create" || action.startsWith("org:")) {
+        organizationId = resourceId;
     }
 
-    // If we couldn't determine an organization, deny permission.
-    if (!organizationId) {
-      console.error(`Could not determine organizationId for action: ${action}`);
-      return false;
-    }
+    if (!organizationId) return false;
 
-    // --- The rest of the logic remains the same and is now correct ---
-
-    // 2. Get the user's role within that specific organization
     const user = await db.user.findFirst({
       where: { id: userId, organizationId: organizationId },
       select: { role: true },
     });
-
     const userRole = user?.role;
-    if (!userRole) return false; // User is not a member of the relevant organization
+    if (!userRole) return false;
 
-    // 3. Define permissions and check if the user's role has the permission
+    // --- FIX: Add the new permission to the roles ---
     const permissions: Record<UserRole, string[]> = {
-      ORG_ADMIN: [
-        "post:create",
-        "post:edit",
-        "post:delete",
-        "org:manage_members",
-        "org:edit_settings",
-      ],
-      EDITOR: ["post:create", "post:edit", "post:delete"],
-      WRITER: ["post:create", "post:edit", "post:delete"],
+      ORG_ADMIN: [ "post:create", "post:edit", "post:delete", "draft:edit", "org:manage_members", "org:edit_settings" ],
+      EDITOR: ["post:create", "post:edit", "post:delete", "draft:edit" ],
+      WRITER: ["post:create", "post:edit", "post:delete", "draft:edit"],
     };
     
-    // Check general role-based permission
     if (permissions[userRole]?.includes(action)) {
-        // Special case for writers: they can only edit/delete their own posts
-        if (userRole === 'WRITER' && (action === 'post:edit' || action === 'post:delete')) {
-            return postAuthorId === userId;
+        // --- FIX: Apply author-only logic to both post and draft edits for WRITER role ---
+        if (userRole === 'WRITER' && (action === 'post:edit' || action === 'post:delete' || action === 'draft:edit')) {
+            return authorId === userId;
         }
-        // Admins and Editors have full access for their respective permissions
         return true;
     }
 

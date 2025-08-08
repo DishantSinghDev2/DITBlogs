@@ -179,52 +179,92 @@ export const getPostBySlug = cache(async (slug: string, userId?: string) => {
 });
 
 
-export const getUserPosts = cache(async (userId: string, page = 1, limit = 10) => {
-  const skip = (page - 1) * limit
+export const getUserContent = cache(async (
+  userId: string,
+  page = 1,
+  limit = 10,
+  status: 'draft' | 'published' = 'published',
+  query: string = ''
+) => {
+  const skip = (page - 1) * limit;
 
-  const posts = await db.post.findMany({
-    where: {
-      authorId: userId,
-    },
-    include: {
-      author: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
-        },
+  const commonWhere = {
+    authorId: userId,
+    ...(query && {
+      title: {
+        contains: query,
+        mode: "insensitive",
       },
-      category: true,
-      _count: {
-        select: {
-          comments: true,
-          views: true,
+    }),
+  };
+
+  if (status === 'published') {
+    const [posts, total] = await db.$transaction([
+      db.post.findMany({
+        where: commonWhere,
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          category: true,
+          _count: {
+            select: {
+              comments: true,
+              views: true,
+            },
+          },
         },
+        orderBy: { publishedAt: "desc" },
+        skip, take: limit,
+      }),
+      db.post.count({ where: commonWhere }),
+    ]);
+
+    return {
+      content: posts,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    skip,
-    take: limit,
-  })
+    };
+  } else { // status === 'draft'
+    const [drafts, total] = await db.$transaction([
+      db.draft.findMany({
+        where: commonWhere,
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          category: true,
+        },
+        orderBy: { updatedAt: "desc" },
+        skip, take: limit,
+      }),
+      db.draft.count({ where: commonWhere }),
+    ]);
 
-  const total = await db.post.count({
-    where: {
-      authorId: userId,
-    },
-  })
-
-  return {
-    posts,
-    pagination: {
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-    },
+    return {
+      content: drafts,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    };
   }
-})
+});
+
 
 export const getRelatedPosts = cache(async (postId: string, categoryId?: string | null) => {
   const query: any = {

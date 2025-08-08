@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const categories = await db.category.findMany({ where: { organizationId: org.id }, select: { name: true, slug: true } });
 
   try {
-    await redis.set(cacheKey, JSON.stringify(categories), { ex: 3600 }); // Cache for 1 hour
+    await redis.set(cacheKey, JSON.stringify(categories), { EX: 3600 }); // Cache for 1 hour
   } catch (e) { console.error(e); }
 
   return NextResponse.json(categories);
