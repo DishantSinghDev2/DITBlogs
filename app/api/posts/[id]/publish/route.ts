@@ -37,6 +37,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             where: { id: draft.postId },
             data: postData,
         });
+        await db.draft.delete({ where: { id: id } });
     } else {
         // This is a brand new post going live for the first time
         publishedPost = await db.post.create({ data: postData });

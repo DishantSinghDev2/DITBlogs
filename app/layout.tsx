@@ -92,7 +92,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <AuthProvider>
-              <div className="relative flex min-h-screen flex-col max-w-[100vw] mx-auto ">
+              <div className="relative flex min-h-screen flex-col max-w-[100vw] mx-auto">
                 <SiteHeader />
                 <Suspense>
                   <div className="">{children}</div>

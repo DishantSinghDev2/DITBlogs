@@ -59,7 +59,7 @@ export function DashboardShell({
         </header>
 
         {/* The actual page content */}
-        <main className="flex-1 p-1 sm:px-2 sm:py-0 md:p-4 scrollable">{children}</main>
+        <main className="flex-1 p-1 sm:px-2 sm:py-0 md:p-4 ">{children}</main>
       </div>
 
       {/* --- Mobile Sidebar with Animation --- */}

@@ -18,7 +18,26 @@ export async function PUT(req: Request, { params }: { params: { draftId: string 
     // You can add permission checks here if needed
     const updatedDraft = await db.draft.update({
         where: { id: draftId, authorId: session.user.id }, // Ensure user owns the draft
-        data: body,
+        data: {
+            ...body,
+            tags: {
+                set: [], // optional: clear old ones
+                connectOrCreate: (body.tags || []).map((tag) => ({
+                    where: {
+                        // Unique constraint: slug + org
+                        organizationId_slug: {
+                            slug: tag,
+                            organizationId: body.organizationId,
+                        },
+                    },
+                    create: {
+                        slug: tag,
+                        name: tag, // or use a formatted name
+                        organization: { connect: { id: body.organizationId } },
+                    },
+                })),
+            },
+        }
     });
     return NextResponse.json(updatedDraft);
 }
@@ -37,5 +56,5 @@ export async function DELETE(req: Request, { params }: { params: { draftId: stri
     await db.draft.delete({
         where: { id: draftId, authorId: session.user.id },
     });
-    return NextResponse.json({ message: "Draft deleted successfully"});
+    return NextResponse.json({ message: "Draft deleted successfully" });
 }

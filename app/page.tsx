@@ -7,7 +7,7 @@ import { NewsletterCta } from "@/components/home/newsletter-cta";
 
 export default async function HomePage() {
   return (
-    <main className="container mx-auto px-4 py-8">
+    <main className="container mx-auto px-4 py-8 scrollable">
       <HomeHero />
       <HowItWorks />
       <Features />

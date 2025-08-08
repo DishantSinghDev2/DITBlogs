@@ -18,12 +18,6 @@ export function DraftPosts({ posts }: DraftPostsProps) {
           <CardTitle>Draft Posts</CardTitle>
           <CardDescription>Continue working on your unpublished posts.</CardDescription>
         </div>
-        <Button asChild size="sm">
-          <Link href="/dashboard/editor">
-            <PenTool className="mr-1 h-4 w-4" />
-            New
-          </Link>
-        </Button>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">

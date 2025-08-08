@@ -47,7 +47,12 @@ body {
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --track: #f0f0f0;
+    --thumb: #bbb;
+    --thumb-hover: #999;
+
   }
+
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -81,6 +86,9 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    --track: #2c2c2c;
+    --thumb: #555;
+    --thumb-hover: #777;
   }
 }
 
@@ -88,52 +96,40 @@ body {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-
-/* Apply to scrollable containers: sidebar, content */
-.scrollable {
-  overflow: auto;
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: transparent transparent; /* Hide by default */
-  transition: scrollbar-color 0.3s ease;
+/* Firefox (globally) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--thumb) transparent;
 }
 
-/* Show scrollbar only on hover */
-.scrollable:hover {
-  scrollbar-color: var(--scroll-thumb-color) transparent;
+/* WebKit Browsers (Chrome, Safari, Edge, etc.) */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-/* Chrome/Edge/Safari (Webkit Browsers) */
-.scrollable::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.scrollable::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.scrollable::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  border-radius: 10px;
-  transition: background-color 0.3s ease;
+*::-webkit-scrollbar-thumb {
+  background-color: var(--thumb);
+  border-radius: 4px;
+  transition: background-color 0.3s ease, height 0.3s ease;
 }
 
-.scrollable:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scroll-thumb-color);
+/* Hover effect on the whole scrollable element triggers darker thumb */
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--thumb-hover);
 }
 
-/* Scroll thumb color for dark/light themes */
-:root {
-  --scroll-thumb-color: rgba(0, 0, 0, 0.2); /* Light default */
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --scroll-thumb-color: rgba(255, 255, 255, 0.2); /* Dark mode */
-  }
+/* Optional: cursor feedback */
+*::-webkit-scrollbar-thumb:active {
+  cursor: grab;
 }

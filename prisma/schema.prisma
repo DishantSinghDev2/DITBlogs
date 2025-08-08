@@ -263,6 +263,7 @@ model Tag {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, name]) // A tag name must be unique within an organization
+  @@unique([organizationId, slug])
   @@index([organizationId])
   Draft Draft[]
 }

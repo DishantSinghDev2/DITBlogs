@@ -45,7 +45,7 @@
 
 .iframe-wrapper {
   position: relative;
-  padding-bottom: (100 / 16) * 9%;
+  padding-bottom: calc(100 / 16) * 9%;
   height: 0;
   overflow: hidden;
   width: 100%;
