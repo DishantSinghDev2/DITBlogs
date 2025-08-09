@@ -4,14 +4,15 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { redirect, usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
-import { Menu, X, Search, Sun, Moon, Loader2 } from "lucide-react"
-import { motion } from "framer-motion"
+import { Menu, X, Search, Sun, Moon, Loader2, Crown, LogOut, User, Star, Settings, FileText, LayoutDashboard } from "lucide-react"
+import { AnimatePresence, motion } from "framer-motion"
 
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -39,9 +40,9 @@ export function SiteHeader() {
 
   const navigation = [
     { name: "Home", href: "/" },
-    { name: "Blog", href: "/blog" },
-    { name: "Categories", href: "/categories" },
+    { name: "Pricing", href: "/pricing" },
     { name: "About", href: "/about" },
+    { name: "Contact", href: "/contact" },
   ]
 
   const userInitials = session?.user?.name
@@ -75,11 +76,11 @@ export function SiteHeader() {
       <div className=" flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center space-x-2">
-              <img
-                src={"/logotext.png"}
-                alt={"DITBlogs"}
-                className="h-8 w-auto"
-              />
+            <img
+              src={"/logotext.png"}
+              alt={"DITBlogs"}
+              className="h-8 w-auto"
+            />
           </Link>
 
           <nav className="hidden md:flex gap-6">
@@ -97,10 +98,10 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
-              <Search className="h-5 w-5" />
-              <span className="sr-only">Search</span>
-            </Button>
+          <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
+            <Search className="h-5 w-5" />
+            <span className="sr-only">Search</span>
+          </Button>
 
           <Button variant="ghost" size="icon" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -108,59 +109,87 @@ export function SiteHeader() {
             <span className="sr-only">Toggle theme</span>
           </Button>
 
-          {session ? (
+          {status === "loading" ? (
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          ) : session ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
+                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                  <Avatar className="h-9 w-9">
                     <AvatarImage src={session.user.image || ""} alt={session.user.name || "User"} />
                     <AvatarFallback>{userInitials}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {session.user.role !== "user" && (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">Dashboard</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/posts">My Posts</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/bookmarks">Bookmarks</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/settings">Settings</Link>
-                    </DropdownMenuItem>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                {/* --- CUTE & ADVANCED DROPDOWN --- */}
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{session.user.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+                  </div>
+                </DropdownMenuLabel>
 
-                  </>)}
-                {session.user.role === "admin" && (
+                <DropdownMenuSeparator />
+
+                {/* --- Dynamic links based on user's organization status --- */}
+                {session.user.organizationId ? (
                   <>
-                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard/admin">Admin Panel</Link>
+                      <Link href="/dashboard"><LayoutDashboard className="mr-2 h-4 w-4" /><span>Dashboard</span></Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/posts"><FileText className="mr-2 h-4 w-4" /><span>My Content</span></Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard/settings/profile"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link>
                     </DropdownMenuItem>
                   </>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link href="/onboarding"><Star className="mr-2 h-4 w-4" /><span>Get Started</span></Link>
+                  </DropdownMenuItem>
                 )}
+
+                {/* --- Admin Link (only for ORG_ADMIN) --- */}
+                {session.user.role === 'ORG_ADMIN' && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/members"><User className="mr-2 h-4 w-4" /><span>Manage Members</span></Link>
+                  </DropdownMenuItem>
+                )}
+
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="#" onClick={() => signOut()}>Sign out</Link>
+
+                {/* --- Upgrade Button (only for FREE plan users) --- */}
+                {session.user.plan === 'FREE' && (
+                  <>
+                    <DropdownMenuItem asChild className="focus:bg-primary/10 focus:text-primary">
+                      <Link href="/dashboard/settings/plan">
+                        <Crown className="mr-2 h-4 w-4" />
+                        <span>Upgrade Plan</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : status === "loading" ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
-            <Button asChild variant="default" size="sm">
+            <Button asChild size="sm">
               <Link href="/auth/login">Sign in</Link>
             </Button>
           )}
 
+
           <Button
             variant="ghost"
             size="icon"
-          className={`md:hidden ${isMobileMenuOpen ? "z-[100]" : ""}`}
+            className={`md:hidden ${isMobileMenuOpen ? "z-[100]" : ""}`}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -169,67 +198,34 @@ export function SiteHeader() {
       </div>
 
       {/* Mobile menu with Framer Motion */}
-      {isMobileMenuOpen && (
-        <motion.div
-          className="md:hidden fixed top-0 left-0 z-[70] w-full h-full bg-background/80 backdrop-blur-sm flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="space-y-6 text-center">
-            <nav className="flex flex-col space-y-4">
-              {navigation.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`text-xl font-medium transition-colors hover:text-primary ${pathname === item.href ? "text-primary" : "text-muted-foreground"
-                    }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Search Bar Animation */}
-      {isSearchOpen && (
-        <motion.div
-          className="fixed top-0 left-0 right-0 z-50 flex justify-center  w-full h-full bg-background/80 backdrop-blur-sm p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="relative w-full md:w-96">
-            <Input placeholder="Search..." className="w-full rounded-full border-none bg-secondary text-secondary-foreground shadow-md focus:outline-none focus:ring-2 focus:ring-primary/50"
-              style={{ paddingLeft: '3rem' }} // Add padding for the icon
-              value={searchQuery}              
-              
-              autoFocus
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onBlur={() => setIsSearchOpen(false)}
-              onKeyDown={handleSearchKeyDown}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-0 top-0"
-              onClick={() => setIsSearchOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="icon" className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground">
-              <Search className="h-5 w-5" />
-              <span className="sr-only">Search</span>
-
-            </Button>
-          </div>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            key="mobile-menu"
+            className="md:hidden fixed top-0 left-0 z-[70] w-full h-full bg-background/95 flex items-center justify-center"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <div className="space-y-6 text-center">
+              <nav className="flex flex-col space-y-4">
+                {navigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`text-xl font-medium transition-colors hover:text-primary ${pathname === item.href ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }

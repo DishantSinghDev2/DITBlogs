@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Select the appropriate model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     let systemPrompt = "";
     let userPrompt = "";

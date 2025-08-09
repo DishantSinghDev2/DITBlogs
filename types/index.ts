@@ -13,7 +13,7 @@ export interface UserProfile {
   businessName?: string;
   bio?: string;
   avatar?: string;
-  isProUser: boolean;
+  plan: string;
   deactivatedAt?: Date;
   paypalSubscriptionId?: string;
   proStarted?: Date;

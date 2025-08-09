@@ -4,6 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { db } from "@/lib/db"
 import { UserProfile } from "@/types" // Assuming your UserProfile type is here
 import { JWT } from "next-auth/jwt"
+import { Plan } from "@prisma/client"
 
 declare module "next-auth" {
   interface Session {
@@ -15,6 +16,8 @@ declare module "next-auth" {
       role: string;
       image: string;
       onboardingCompleted: boolean;
+      organizationId: string;
+      plan: string;
     };
   }
 }
@@ -124,7 +127,8 @@ export const authOptions: NextAuthOptions = {
           email: profile.email,
           image: `https://whatsyour.info/api/v1/avatar/${profile.username}`, // Map avatar from API to image for the adapter
           emailVerified: profile.emailVerified,
-          bio: profile.bio
+          bio: profile.bio,
+          plan: profile.plan || Plan.FREE
         };
       },
     },
@@ -137,6 +141,9 @@ export const authOptions: NextAuthOptions = {
         where: {
           email: token.email,
         },
+        include: {
+          organization: true
+        }
       });
 
       if (!dbUser) {
@@ -154,7 +161,9 @@ export const authOptions: NextAuthOptions = {
         email: dbUser.email,
         picture: dbUser.image,
         role: dbUser.role, // <-- THIS IS THE KEY
-        onboardingCompleted: dbUser?.onboardingCompleted || false
+        onboardingCompleted: dbUser?.onboardingCompleted || false,
+        plan: dbUser.organization?.plan,
+        organizationId: dbUser.organizationId
       };
     },
 
@@ -166,6 +175,8 @@ export const authOptions: NextAuthOptions = {
         session.user.image = token.picture as string;
         session.user.role = token.role as string; // Also passing it to the client-side session
         session.user.onboardingCompleted = token.onboardingCompleted as boolean;
+        session.user.plan = token.plan as string;
+        session.user.organizationId = token.organizationId as string;
       }
       return session;
     },

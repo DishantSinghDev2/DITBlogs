@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   BellRing,
   LayoutList,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@prisma/client"; // Import the enum
@@ -79,6 +80,12 @@ const navGroups = [
         title: "Analytics",
         href: "/dashboard/analytics",
         icon: BarChart3,
+        roles: [UserRole.ORG_ADMIN], // Only admins can see this
+      },
+      {
+        title: "Plan",
+        href: "/dashboard/settings/plan",
+        icon: DollarSign,
         roles: [UserRole.ORG_ADMIN], // Only admins can see this
       },
        {

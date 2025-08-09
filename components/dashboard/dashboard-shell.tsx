@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { type UserRole } from "@prisma/client";
 import { motion, AnimatePresence } from "framer-motion"; // Import framer-motion
 import Link from "next/link";
+import { SiteFooter } from "../site-footer";
 
 export function DashboardShell({
   userRole,
@@ -60,6 +61,7 @@ export function DashboardShell({
 
         {/* The actual page content */}
         <main className="flex-1 p-1 sm:px-2 sm:py-0 md:p-4 ">{children}</main>
+        <SiteFooter variant="compact" />
       </div>
 
       {/* --- Mobile Sidebar with Animation --- */}
@@ -85,15 +87,23 @@ export function DashboardShell({
               transition={{ type: "tween", duration: 0.3, ease: "easeInOut" }}
               className="fixed inset-y-0 top-16 left-0 z-50 flex h-full w-64 flex-col border-r bg-background md:hidden"
             >
-              <Button
-                variant="outline"
-                size="icon"
-                className="m-2 h-8 w-8 "
-                onClick={() => setSidebarOpen(false)}
-              >
-                <X className="h-4 w-4" />
-                <span className="sr-only">Close Menu</span>
-              </Button>
+              <div className="p-2 flex gap-2 w-full">
+                <Link className="w-full" href={"/dashboard/editor"}>
+                  <Button className="w-full">
+                    <PenTool className="w-4 h-4" />
+                    Create Post
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="min-w-8"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close Menu</span>
+                </Button>
+              </div>
               <div className="flex-1 overflow-y-auto scrollable">
                 <DashboardNav userRole={userRole} />
               </div>

@@ -97,7 +97,6 @@ export default function RootLayout({
                 <Suspense>
                   <div className="">{children}</div>
                 </Suspense>
-                <SiteFooter />
               </div>
               <Analytics />
               <Toaster />

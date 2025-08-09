@@ -12,7 +12,7 @@ export function SiteFooter({ variant = 'full' }: SiteFooterProps) {
   // --- COMPACT FOOTER for Authenticated Pages ---
   if (variant === 'compact') {
     return (
-      <footer className="bg-background border-t">
+      <footer className="bg-background border-t pl-2">
         <div className=" py-4">
           <div className="flex flex-col items-center justify-between gap-4 text-sm text-muted-foreground md:flex-row">
             <p>
