@@ -1,0 +1,21 @@
+{
+  "name": "ditblogs-js",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Monorepo for the DITBlogs JavaScript SDK and React Components",
+  "scripts": {
+    "build": "pnpm --filter \"@dishistech/*\" build",
+    "dev": "pnpm --filter \"@dishistech/blogs-react\" dev",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "keywords": [],
+  "author": "blogs.dishis.tech",
+  "license": "MIT",
+  "devDependencies": {
+    "@changesets/cli": "^2.27.1",
+    "typescript": "^5.3.3",
+    "tsup": "^8.0.2"
+  }
+}

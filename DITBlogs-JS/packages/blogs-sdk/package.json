@@ -1,0 +1,26 @@
+{
+  "name": "@dishistech/blogs-sdk",
+  "version": "1.0.0",
+  "description": "Official SDK for the blogs.dishis.tech API",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
+  },
+  "keywords": ["api", "sdk", "blog", "dishistech"],
+  "author": "blogs.dishis.tech",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/ditblogs-js.git",
+    "directory": "packages/blogs-sdk"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

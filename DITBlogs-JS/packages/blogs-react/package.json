@@ -1,0 +1,35 @@
+{
+  "name": "@dishistech/blogs-react",
+  "version": "1.0.0",
+  "description": "Official React components for the blogs.dishis.tech API",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --external react",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --external react --watch"
+  },
+  "keywords": ["react", "components", "ui", "blog", "dishistech"],
+  "author": "blogs.dishis.tech",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/ditblogs-js.git",
+    "directory": "packages/blogs-react"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@dishistech/blogs-sdk": "workspace:*"
+  },
+  "peerDependencies": {
+    "lucide-react": "^0.300.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "swr": "^2.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

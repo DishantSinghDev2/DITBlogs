@@ -1,3 +1,4 @@
+// /home/dit/blogs/DITBlogs/app/api/v1/categories/route.ts
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateAndCheckUsage } from "@/lib/api/v1/auth";
@@ -10,14 +11,31 @@ export async function GET(req: NextRequest) {
   const cacheKey = `v1:categories:${org.id}`;
   try {
     const cached = await redis.get(cacheKey);
-    if (cached) return NextResponse.json(JSON.parse(cached));
-  } catch (e) { console.error(e); }
+    if (cached) {
+      console.log(`CACHE HIT for ${cacheKey}`);
+      return NextResponse.json(JSON.parse(cached));
+    }
+  } catch (e) {
+    console.error(`Redis GET error for key ${cacheKey}:`, e);
+  }
 
-  const categories = await db.category.findMany({ where: { organizationId: org.id }, select: { name: true, slug: true } });
-
+  console.log(`CACHE MISS for ${cacheKey}`);
   try {
-    await redis.set(cacheKey, JSON.stringify(categories), { EX: 3600 }); // Cache for 1 hour
-  } catch (e) { console.error(e); }
+    const categories = await db.category.findMany({
+      where: { organizationId: org.id },
+      select: { name: true, slug: true },
+      orderBy: { name: 'asc' }
+    });
 
-  return NextResponse.json(categories);
+    try {
+      await redis.set(cacheKey, JSON.stringify(categories), { EX: 3600 }); // Cache for 1 hour
+    } catch (e) {
+      console.error(`Redis SET error for key ${cacheKey}:`, e);
+    }
+
+    return NextResponse.json(categories);
+  } catch (dbError) {
+    console.error("[V1_CATEGORIES_GET_ERROR]", dbError);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
 }

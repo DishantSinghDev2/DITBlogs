@@ -1,3 +1,4 @@
+// /home/dit/blogs/DITBlogs/app/api/v1/posts/route.ts
 import { db } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import { NextRequest, NextResponse } from "next/server";

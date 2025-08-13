@@ -1,3 +1,4 @@
+// /home/dit/blogs/DITBlogs/app/api/v1/posts/route.ts
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateAndCheckUsage } from "@/lib/api/v1/auth";
