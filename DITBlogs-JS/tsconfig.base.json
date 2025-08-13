@@ -1,0 +1,19 @@
+// /tsconfig.base.json  <-- NEW FILE
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@dishistech/blogs-sdk": ["packages/blogs-sdk/src/index.ts"],
+      "@dishistech/blogs-react": ["packages/blogs-react/src/index.ts"]
+    }
+  }
+}

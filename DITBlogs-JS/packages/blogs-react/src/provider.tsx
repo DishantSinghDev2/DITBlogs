@@ -2,29 +2,38 @@
 "use client";
 
 import { DITBlogsClient } from "@dishistech/blogs-sdk";
-import { createContext, useContext, ReactNode, useMemo, useEffect } from "react";
+import { createContext, useContext, ReactNode, useMemo, useEffect, ElementType } from "react";
 import { SWRConfig } from "swr";
 import { Theme, CustomTheme, lightTheme, darkTheme } from "./theme";
 
+
 interface DITBlogsContextType {
   client: DITBlogsClient;
+  Link: ElementType;
 }
 
 const DITBlogsContext = createContext<DITBlogsContextType | null>(null);
 
-export function useDITBlogs() {
+// RENAMED for clarity
+export function useDITBlogsContext() {
   const context = useContext(DITBlogsContext);
-  if (!context) throw new Error("useDITBlogs must be used within a DITBlogsProvider");
-  return context.client;
+  if (!context) throw new Error("useDITBlogsContext must be used within a DITBlogsProvider");
+  return context; // Returns the whole { client, Link } object
 }
+
 
 interface DITBlogsProviderProps {
   children: ReactNode;
   apiKey: string;
   theme?: Theme | CustomTheme;
+  /**
+   * Provide a Link component from your routing library (e.g., next/link or react-router-dom's Link).
+   * Defaults to a standard HTML `<a>` tag.
+   */
+  linkComponent?: ElementType;
 }
 
-export function DITBlogsProvider({ children, apiKey, theme = "light" }: DITBlogsProviderProps) {
+export function DITBlogsProvider({ children, apiKey, theme = "light", linkComponent = 'a' }: DITBlogsProviderProps) {
   const client = useMemo(() => new DITBlogsClient(apiKey), [apiKey]);
 
   // Apply theme via CSS variables
@@ -49,9 +58,10 @@ export function DITBlogsProvider({ children, apiKey, theme = "light" }: DITBlogs
     
   }, [theme]);
 
+  const value = { client, Link: linkComponent };
 
   return (
-    <DITBlogsContext.Provider value={{ client }}>
+    <DITBlogsContext.Provider value={value}>
       <SWRConfig>{children}</SWRConfig>
     </DITBlogsContext.Provider>
   );

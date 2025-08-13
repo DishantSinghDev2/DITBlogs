@@ -5,11 +5,12 @@
 
 import React from 'react';
 import useSWR from 'swr';
-import { useDITBlogs } from '../provider';
+import { useDITBlogsContext } from '../provider';
 import { Tag as CategoryIcon } from 'lucide-react'; // Using Tag icon for visual consistency
+import { Category } from '@dishistech/blogs-sdk';
 
 export function CategoriesListPage() {
-  const client = useDITBlogs();
+  const {client} = useDITBlogsContext();
   const { data: categories, error, isLoading } = useSWR('categories', () => client.getCategories());
 
   if (error) return <div className="text-center text-red-500">Failed to load categories.</div>;
@@ -29,7 +30,7 @@ export function CategoriesListPage() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {categories.map((category) => (
+      {categories.map((category: Category) => (
         <a key={category.slug} href={`/categories/${category.slug}`} className="group flex items-center gap-3 p-4 border rounded-lg bg-card hover:bg-muted transition-colors">
           <CategoryIcon className="w-5 h-5 text-primary" />
           <span className="font-semibold text-card-foreground group-hover:text-primary">{category.name}</span>

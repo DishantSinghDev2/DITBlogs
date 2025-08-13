@@ -1,18 +1,30 @@
 // /packages/blogs-react/src/layout/BlogLayout.tsx
-import { DITBlogsProvider } from "../provider";
-import { Theme, CustomTheme } from "../theme";
-import { ReactNode } from 'react';
-import Link from 'next/link'; // Assume Next.js for linking
+"use client";
 
-// Header with customizable nav links
+import { ElementType, ReactNode } from 'react';
+import { DITBlogsProvider, useDITBlogsContext } from '../provider'; // Note: Only provider needs to be imported here now.
+import { CustomTheme, Theme } from '../theme';
+
+// DEFINE THE MISSING INTERFACE
+interface BlogLayoutProps {
+    children: ReactNode;
+    apiKey: string;
+    theme?: Theme | CustomTheme;
+    navLinks?: { href: string; label: string }[];
+    linkComponent?: ElementType;
+}
+
+
+// Header now uses the Link from context
 function Header({ navLinks }: { navLinks?: { href: string; label: string }[] }) {
+  const { Link } = useDITBlogsContext(); // Get the link component from our context
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
       <nav className="container mx-auto px-6 h-16 flex items-center justify-between">
         <Link href="/" className="text-2xl font-bold text-foreground">My Blog</Link>
         <div className="flex items-center gap-6">
           {navLinks?.map(link => (
-            <Link key={link.href} href={link.href} className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <Link key={link.href} href={link.href} className="text-sm font-medium text-muted-foreground hover:text-foreground">
               {link.label}
             </Link>
           ))}
@@ -36,21 +48,13 @@ function Footer() {
   );
 }
 
-interface BlogLayoutProps {
-  children: ReactNode;
-  apiKey: string;
-  theme?: Theme | CustomTheme;
-  navLinks?: { href: string; label: string }[];
-}
-
-export function BlogLayout({ children, apiKey, theme, navLinks }: BlogLayoutProps) {
+// The main BlogLayout now passes the linkComponent to the provider
+export function BlogLayout({ children, apiKey, theme, navLinks, linkComponent }: BlogLayoutProps) {
   return (
-    <DITBlogsProvider apiKey={apiKey} theme={theme}>
+    <DITBlogsProvider apiKey={apiKey} theme={theme} linkComponent={linkComponent}>
       <div className="flex flex-col min-h-screen bg-background text-foreground">
         <Header navLinks={navLinks} />
-        <main className="flex-grow container mx-auto px-6 py-12">
-          {children}
-        </main>
+        <main className="flex-grow container mx-auto px-6 py-12">{children}</main>
         <Footer />
       </div>
     </DITBlogsProvider>

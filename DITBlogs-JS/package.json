@@ -4,8 +4,11 @@
   "version": "1.0.0",
   "description": "Monorepo for the DITBlogs JavaScript SDK and React Components",
   "scripts": {
-    "build": "pnpm --filter \"@dishistech/*\" build",
-    "dev": "pnpm --filter \"@dishistech/blogs-react\" dev",
+    "build:types": "tsc --build",
+    "build:js": "pnpm --filter \"@dishistech/*\" build:js",
+    "build": "pnpm run clean && pnpm run build:types && pnpm run build:js",
+    "dev": "pnpm --filter \"@dishistech/*\" dev --parallel",
+    "clean": "rm -rf packages/*/dist",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "pnpm build && changeset publish"
@@ -15,7 +18,9 @@
   "license": "MIT",
   "devDependencies": {
     "@changesets/cli": "^2.27.1",
-    "typescript": "^5.3.3",
-    "tsup": "^8.0.2"
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3"
   }
 }

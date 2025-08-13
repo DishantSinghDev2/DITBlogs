@@ -3,13 +3,15 @@
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
-import { useDITBlogs } from '../provider';
+import { useDITBlogsContext } from '../provider';
 import { PostsListPage } from './PostsListPage';
 import { PostCardSkeleton } from './skeletons';
 import { Pagination } from './Pagination'; // Import Pagination
+import { PostCard } from './PostCard';
+import { Post } from '@dishistech/blogs-sdk';
 
 export function CategoryPage({ slug }: { slug: string }) {
-    const client = useDITBlogs();
+    const {client} = useDITBlogsContext();
     const [currentPage, setCurrentPage] = useState(1);
     
     // This SWR hook now also depends on currentPage
@@ -42,7 +44,7 @@ export function CategoryPage({ slug }: { slug: string }) {
                 <div>
                   {/* Since PostsListPage is now complex, we just repeat its internal logic */}
                    <div className="grid md:grid-cols-2 gap-8">
-                     {data.posts.map((post) => <PostCard key={post.slug} post={post} />)}
+                     {data.posts.map((post: Post) => <PostCard key={post.slug} post={post} />)}
                    </div>
                    <Pagination
                      currentPage={data.pagination.page}

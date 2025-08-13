@@ -3,11 +3,11 @@
 
 import React, { useState, useEffect } from "react";
 import useSWR from "swr";
-import { useDITBlogs } from "../provider";
-import { PostCardSkeleton } from "./skeletons"; // Skeletons are crucial!
+import { useDITBlogsContext } from "../provider"; // Use the renamed hookimport { PostCardSkeleton } from "./skeletons"; // Skeletons are crucial!
 import { Post } from "@dishistech/blogs-sdk";
 import { ArrowRight, Search as SearchIcon, X } from "lucide-react";
 import { Pagination } from "./Pagination";
+import { PostCardSkeleton } from "./skeletons";
 
 // Debounce hook for search input
 function useDebounce(value: string, delay: number) {
@@ -57,7 +57,7 @@ function PostCard({ post }: { post: Post }) {
 }
 
 export function PostsListPage({ category, tag }: { category?: string; tag?: string }) {
-  const client = useDITBlogs();
+  const {client} = useDITBlogsContext();
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data, error, isLoading } = useSWR(
@@ -83,7 +83,7 @@ export function PostsListPage({ category, tag }: { category?: string; tag?: stri
   return (
     <div>
       <div className="grid md:grid-cols-2 gap-8">
-        {data.posts.map((post) => <PostCard key={post.slug} post={post} />)}
+        {data.posts.map((post: Post) => <PostCard key={post.slug} post={post} />)}
       </div>
       <Pagination
         currentPage={data.pagination.page}

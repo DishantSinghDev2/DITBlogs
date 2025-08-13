@@ -3,13 +3,12 @@
 
 "use client";
 
-import React from 'react';
 import useSWR from 'swr';
-import { useDITBlogs } from '../provider';
-import { Hash } from 'lucide-react';
+import { useDITBlogsContext } from '../provider';
+import { Tag } from '@dishistech/blogs-sdk';
 
 export function TagsListPage() {
-  const client = useDITBlogs();
+  const {client} = useDITBlogsContext();
   const { data: tags, error, isLoading } = useSWR('tags', () => client.getTags());
 
   if (error) return <div className="text-center text-red-500">Failed to load tags.</div>;
@@ -22,7 +21,7 @@ export function TagsListPage() {
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-4">
-      {tags.map((tag) => (
+      {tags.map((tag: Tag) => (
         <a 
           key={tag.slug} 
           href={`/tags/${tag.slug}`} 

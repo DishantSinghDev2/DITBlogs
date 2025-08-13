@@ -3,14 +3,14 @@
 
 import React, { useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { useDITBlogs } from '../provider';
+import { useDITBlogsContext } from '../provider'; // Use renamed hook
 import { Comment } from '@dishistech/blogs-sdk';
 import { CommentsSectionSkeleton } from './skeletons';
 import { CornerDownRight, Send } from 'lucide-react';
 
 // --- Reusable Comment Form ---
 function CommentForm({ postSlug, userToken, parentId, onCommentPosted }: { postSlug: string; userToken?: string; parentId?: string; onCommentPosted: () => void }) {
-    const client = useDITBlogs();
+    const {client} = useDITBlogsContext();
     const { mutate } = useSWRConfig();
     const [content, setContent] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -85,7 +85,7 @@ function CommentItem({ comment, postSlug, userToken }: { comment: Comment; postS
 
 // --- The Main Exported Component ---
 export function CommentsSection({ postSlug, userToken }: { postSlug: string; userToken?: string }) {
-  const client = useDITBlogs();
+  const {client} = useDITBlogsContext();
   const { data: comments, error, isLoading } = useSWR(['comments', postSlug], () => client.getComments(postSlug));
 
   if (isLoading) return <CommentsSectionSkeleton />;
@@ -97,7 +97,7 @@ export function CommentsSection({ postSlug, userToken }: { postSlug: string; use
       <CommentForm postSlug={postSlug} userToken={userToken} onCommentPosted={() => {}} />
       <div className="mt-8 divide-y divide-muted">
         {comments && comments.length > 0 ? (
-          comments.map(comment => <CommentItem key={comment.id} comment={comment} postSlug={postSlug} userToken={userToken} />)
+          comments.map((comment: Comment) => <CommentItem key={comment.id} comment={comment} postSlug={postSlug} userToken={userToken} />)
         ) : (
           <p className="text-center text-muted-foreground py-8">No comments yet. Be the first to start the discussion!</p>
         )}

@@ -3,7 +3,7 @@
 
 import React from 'react';
 import useSWR from 'swr';
-import { useDITBlogs } from '../provider';
+import { useDITBlogsContext } from '../provider'; // Use renamed hook
 import { PostDetailsSkeleton } from './skeletons';
 import { CommentsSection } from './CommentsSection'; // We will create this next
 
@@ -18,7 +18,7 @@ interface PostDetailsPageProps {
 }
 
 export function PostDetailsPage({ slug, userToken }: PostDetailsPageProps) {
-  const client = useDITBlogs();
+  const {client} = useDITBlogsContext();
   const { data: post, error, isLoading } = useSWR(['post', slug], () => client.getPost(slug));
 
   if (isLoading) return <PostDetailsSkeleton />;

@@ -6,8 +6,8 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts --format cjs,esm --dts --external react",
-    "dev": "tsup src/index.ts --format cjs,esm --dts --external react --watch"
+    "build:js": "tsup src/index.ts --format cjs,esm --external react",
+    "dev": "tsup src/index.ts --format cjs,esm --external react --watch"
   },
   "keywords": ["react", "components", "ui", "blog", "dishistech"],
   "author": "blogs.dishis.tech",
