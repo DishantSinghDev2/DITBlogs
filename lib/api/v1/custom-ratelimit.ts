@@ -1,6 +1,6 @@
-// /lib/api/v1/custom-ratelimit.ts (Create this new file)
+// /lib/api/v1/custom-ratelimit.ts (Corrected for node-redis v4+)
 
-import { redis } from "@/lib/redis"; // Assuming your redis client is ioredis
+import { redis } from "@/lib/redis";
 
 interface RateLimiterOptions {
   redis: typeof redis;
@@ -10,7 +10,7 @@ interface RateLimiterOptions {
 }
 
 /**
- * A custom sliding window rate limiter using Redis Sorted Sets.
+ * A custom sliding window rate limiter using Redis Sorted Sets with node-redis v4 syntax.
  * @returns { success: boolean } - True if the request is within the limit, false otherwise.
  */
 export async function customRateLimiter({
@@ -23,31 +23,41 @@ export async function customRateLimiter({
   const now = Date.now();
   const windowStart = now - windowSeconds * 1000;
 
-  // Use a MULTI/EXEC transaction for atomicity
-  const multi = redisClient.multi();
+  try {
+    // For node-redis, you chain commands to a multi() object.
+    const multi = redisClient.multi();
 
-  // 1. Remove all requests from the sorted set that are outside the current window
-  multi.zremrangebyscore(key, 0, windowStart);
+    // 1. Remove all requests from the sorted set that are outside the current window
+    // Command is now zRemRangeByScore (camelCase of ZREMRANGEBYSCORE)
+    multi.zRemRangeByScore(key, 0, windowStart);
 
-  // 2. Add the current request. The member is unique, the score is the timestamp.
-  multi.zadd(key, now, `${now}-${Math.random()}`);
-  
-  // 3. Count the number of requests in the set (which are all within the window)
-  multi.zcard(key);
+    // 2. Add the current request. The score is the timestamp, the member is unique.
+    // Command is zAdd
+    multi.zAdd(key, { score: now, value: `${now}-${Math.random()}` });
 
-  // 4. Set an expiration on the key itself to auto-clean users who stop making requests
-  multi.expire(key, windowSeconds + 5);
+    // 3. Count the number of requests in the set (which are all within the window)
+    // Command is zCard
+    multi.zCard(key);
+    
+    // 4. Set an expiration on the key itself to auto-clean users who stop making requests
+    multi.expire(key, windowSeconds + 5);
 
-  const results = await multi.exec();
+    // .exec() returns a simple array of results in node-redis v4
+    const results = await multi.exec();
 
-  // The result of the ZCARD command is the 3rd item in the results array
-  // Format from ioredis.multi.exec() is [[error, value], [error, value], ...]
-  const currentRequests = results?.[2]?.[1] as number | null;
+    // The result of the ZCARD command is the 3rd item in the results array
+    const currentRequests = results[2] as number | null;
 
-  if (currentRequests === null) {
+    if (currentRequests === null) {
       // This indicates a Redis transaction error
-      throw new Error("Could not verify rate limit.");
-  }
+      throw new Error("Could not verify rate limit due to Redis error.");
+    }
 
-  return { success: currentRequests <= limit };
+    return { success: currentRequests <= limit };
+    
+  } catch (error) {
+    console.error("[CUSTOM_RATELIMIT_ERROR]", error);
+    // If Redis fails for any reason, we throw to let the caller handle it.
+    throw new Error("Could not verify rate limit.");
+  }
 }
