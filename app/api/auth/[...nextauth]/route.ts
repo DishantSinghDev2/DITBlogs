@@ -128,7 +128,6 @@ export const authOptions: NextAuthOptions = {
           image: `https://whatsyour.info/api/v1/avatar/${profile.username}`, // Map avatar from API to image for the adapter
           emailVerified: profile.emailVerified,
           bio: profile.bio,
-          plan: profile.plan || Plan.FREE
         };
       },
     },
