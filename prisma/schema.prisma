@@ -119,6 +119,8 @@ model Organization {
   Invite Invite[]
 
   Draft Draft[]
+
+  Webhook Webhook[]
 }
 
 // Add a new enum for InviteStatus
@@ -348,4 +350,35 @@ model Notification {
 
   @@index([userId])
   @@index([actorId])
+}
+
+model Webhook {
+  id              String   @id @default(cuid())
+  url             String // The endpoint URL to send the payload to
+  secret          String   @default(cuid()) // A secret key to sign payloads
+  createdAt       DateTime @default(now())
+  
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  events          WebhookEvent[]
+
+  @@index([organizationId])
+}
+
+// A record of a specific webhook delivery attempt
+model WebhookEvent {
+  id              String   @id @default(cuid())
+  eventType       String   // e.g., "post.published", "post.unpublished"
+  payload         Json     // The JSON data sent in the webhook
+  delivered       Boolean  @default(false)
+  deliveredAt     DateTime?
+  responseStatus  Int?     // e.g., 200, 404, 500
+  responseBody    String?  @db.Text
+  createdAt       DateTime @default(now())
+
+  webhookId       String
+  webhook         Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  
+  @@index([webhookId])
 }

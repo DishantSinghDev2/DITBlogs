@@ -1,8 +1,10 @@
+// /home/dit/blogs/DITBlogs/app/api/posts/[id]/publish/route.ts
 import { db } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
+import { triggerWebhooks } from "@/lib/webhook-trigger";
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
     const session = await getServerSession(authOptions);
@@ -49,6 +51,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     await redis.del(`v1:post:${publishedPost.organizationId}:${publishedPost.slug}`);
     const keys = await redis.keys(`v1:posts:${publishedPost.organizationId}:*`);
     if (keys.length > 0) await redis.del(keys);
+
+    // --- NEW: Trigger webhooks ---
+    await triggerWebhooks(publishedPost.organizationId, 'post.published', { post: publishedPost });
 
     return NextResponse.json(publishedPost);
 }
