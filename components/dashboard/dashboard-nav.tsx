@@ -16,6 +16,8 @@ import {
   BellRing,
   LayoutList,
   DollarSign,
+  Key,
+  Webhook,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@prisma/client"; // Import the enum
@@ -94,6 +96,23 @@ const navGroups = [
         icon: Building,
         roles: [UserRole.ORG_ADMIN], // Only admins can see this
       },
+    ],
+  },
+  {
+    title: "Developer",
+    items: [
+        {
+            title: "API Keys",
+            href: "/dashboard/developer/api",
+            icon: Key,
+            roles: [UserRole.ORG_ADMIN],
+        },
+        {
+            title: "Webhooks",
+            href: "/dashboard/developer/webhooks",
+            icon: Webhook,
+            roles: [UserRole.ORG_ADMIN],
+        },
     ],
   },
   {

@@ -99,7 +99,6 @@ model Organization {
   id               String   @id @default(cuid())
   name             String
   website          String
-  apiKey           String   @unique @default(cuid())
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   plan             Plan     @default(FREE)
@@ -121,6 +120,8 @@ model Organization {
   Draft Draft[]
 
   Webhook Webhook[]
+
+  ApiKey ApiKey[]
 }
 
 // Add a new enum for InviteStatus
@@ -351,6 +352,21 @@ model Notification {
   @@index([userId])
   @@index([actorId])
 }
+// NEW MODEL: ApiKey
+model ApiKey {
+  id              String   @id @default(cuid())
+  key             String   @unique // The actual key string, e.g., ditb_...
+  name            String   // A user-given name for the key, e.g., "Production Key"
+  createdAt       DateTime @default(now())
+  lastUsedAt      DateTime?
+  requests        Int      @default(0) // Total requests made with this key
+  
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  @@index([organizationId])
+}
+
 
 model Webhook {
   id              String   @id @default(cuid())

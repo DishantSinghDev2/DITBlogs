@@ -29,7 +29,6 @@ interface OrganizationSettingsProps {
 export function OrganizationSettings({ organization }: OrganizationSettingsProps) {
     const router = useRouter();
     const [isUpdating, setIsUpdating] = useState(false);
-    const [apiKey, setApiKey] = useState(organization.apiKey);
 
     const form = useForm<OrgFormValues>({
         resolver: zodResolver(orgFormSchema),
@@ -57,20 +56,6 @@ export function OrganizationSettings({ organization }: OrganizationSettingsProps
         }
     }
 
-    async function handleRegenerateKey() {
-        setIsUpdating(true);
-        try {
-            const response = await fetch(`/api/organizations/${organization.id}/regenerate-key`, { method: 'POST' });
-            if (!response.ok) throw new Error("Failed to regenerate key.");
-            const { apiKey: newApiKey } = await response.json();
-            setApiKey(newApiKey);
-            toast({ title: "API Key Regenerated", description: "Your new API key is now active." });
-        } catch (error) {
-            toast({ title: "Error", variant: "destructive" });
-        } finally {
-            setIsUpdating(false);
-        }
-    }
 
     async function handleDeleteOrganization() {
         setIsUpdating(true);
@@ -117,27 +102,6 @@ export function OrganizationSettings({ organization }: OrganizationSettingsProps
                             <Button type="submit" disabled={isUpdating}>{isUpdating ? "Saving..." : "Save Changes"}</Button>
                         </form>
                     </Form>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader><CardTitle>API Key</CardTitle><CardDescription>Use this key to connect your frontend to DITBlogs.</CardDescription></CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center space-x-2 rounded-md border bg-muted p-2">
-                        <Input readOnly value={apiKey} className="border-0 bg-transparent shadow-none" />
-                        <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(apiKey); toast({ title: "Copied!" }) }}>
-                            <Copy className="h-4 w-4" />
-                        </Button>
-                    </div>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="outline" disabled={isUpdating}><RefreshCw className="mr-2 h-4 w-4" />Regenerate Key</Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will invalidate your old API key. Your application will need to be updated with the new key.</AlertDialogDescription></AlertDialogHeader>
-                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleRegenerateKey}>Regenerate</AlertDialogAction></AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
                 </CardContent>
             </Card>
 
