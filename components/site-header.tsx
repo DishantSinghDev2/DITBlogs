@@ -40,6 +40,7 @@ export function SiteHeader() {
   const navigation = [
     { name: "Home", href: "/" },
     { name: "Pricing", href: "/pricing" },
+    { name: "Docs", href: "/docs" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ]

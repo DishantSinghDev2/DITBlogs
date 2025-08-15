@@ -1,5 +1,6 @@
-// /app/docs/examples/page.tsx
 import { CodeBlock } from "@/components/docs/CodeBlock";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion } from "framer-motion";
 
 export default function ExamplesPage() {
   const curlExample = `API_KEY="YOUR_API_KEY"
@@ -121,32 +122,49 @@ if __name__ == "__main__":
 `;
 
   return (
-    <>
-      <h1>Full Examples</h1>
-      <p className="text-xl">
-        Here are some complete, end-to-end examples in different languages to help you get started quickly.
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        Full Examples
+      </h1>
+      <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+        Here are some complete, end-to-end examples in different languages to
+        help you get started quickly.
       </p>
-      <p>
-        The common use case shown below is fetching all comments for a post and then submitting a new one.
+      <p className="text-gray-600 dark:text-gray-400 mb-12">
+        The common use case shown below is fetching all comments for a post and
+        then submitting a new one.
       </p>
 
-      <h2 className="!mt-12">cURL</h2>
-      <p>
-        Perfect for quick tests from the command line.
-      </p>
-      <CodeBlock code={curlExample} language="bash" />
-
-      <h2 className="!mt-12">Node.js / JavaScript</h2>
-      <p>
-        A modern example using `fetch`, suitable for backend scripts or server-side logic in web frameworks.
-      </p>
-      <CodeBlock code={nodeExample} language="javascript" />
-
-      <h2 className="!mt-12">Python</h2>
-      <p>
-        A standard implementation using the popular `requests` library.
-      </p>
-      <CodeBlock code={pythonExample} language="python" />
-    </>
+      <Tabs defaultValue="curl">
+        <TabsList>
+          <TabsTrigger value="curl">cURL</TabsTrigger>
+          <TabsTrigger value="node">Node.js</TabsTrigger>
+          <TabsTrigger value="python">Python</TabsTrigger>
+        </TabsList>
+        <TabsContent value="curl">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Perfect for quick tests from the command line.
+          </p>
+          <CodeBlock code={curlExample} language="bash" />
+        </TabsContent>
+        <TabsContent value="node">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            A modern example using `fetch`, suitable for backend scripts or
+            server-side logic in web frameworks.
+          </p>
+          <CodeBlock code={nodeExample} language="javascript" />
+        </TabsContent>
+        <TabsContent value="python">
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            A standard implementation using the popular `requests` library.
+          </p>
+          <CodeBlock code={pythonExample} language="python" />
+        </TabsContent>
+      </Tabs>
+    </motion.div>
   );
 }
