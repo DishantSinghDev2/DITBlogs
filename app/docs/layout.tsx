@@ -1,3 +1,5 @@
+"use client"; // Add this directive
+
 import { Sidebar } from "@/components/docs/Sidebar";
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
