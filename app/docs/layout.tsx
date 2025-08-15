@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export default function DocsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen">
+    <div className="bg-white dark:bg-black text-black dark:text-white min-h-screen">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row">
           <Sidebar />
