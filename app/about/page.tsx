@@ -59,9 +59,6 @@ export default async function AboutPage() {
 
       <section className="space-y-6">
         <header className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center border">
-            <img src={product.logo} alt={`${product.name} logo`} className="w-10 h-10" />
-          </div>
           <div>
             <h1 className="text-3xl font-semibold">About DITBlogs</h1>
             <p className="text-gray-600 mt-1">{product.description}</p>
