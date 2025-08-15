@@ -111,7 +111,7 @@ export default async function AboutPage() {
           </ul>
 
           <div className="mt-4 flex gap-3">
-            <a href="/products/ditblogs" className="inline-block rounded-md px-4 py-2 bg-slate-900 text-white">
+            <a href="#" className="inline-block rounded-md px-4 py-2 bg-slate-900 text-white">
               Learn more
             </a>
             <a href="/contact" className="inline-block rounded-md px-4 py-2 border">Contact sales</a>
