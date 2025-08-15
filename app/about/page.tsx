@@ -104,9 +104,9 @@ export default async function AboutPage() {
           </div>
         </article>
 
-        <section className="border rounded-lg p-6 bg-gray-50">
+        <section className="border rounded-lg p-6 dark:bg-black dark:text-white text-black bg-gray-50">
           <h2 className="text-xl font-medium">Growth & adoption playbook (recommended)</h2>
-          <ul className="pl-5 list-disc text-gray-700">
+          <ul className="pl-5 list-disc">
             <li>Run an internal content cluster strategy: 1 pillar article + 6 supporting posts.</li>
             <li>Instrument CTA clicks and sign-ups (GA4 + server-side event collection) — track conversions and CTAs per post.</li>
             <li>Use canonical + internal linking to funnel link equity to pillar pages.</li>
@@ -120,13 +120,6 @@ export default async function AboutPage() {
             <a href="/contact" className="inline-block rounded-md px-4 py-2 border">Contact sales</a>
           </div>
         </section>
-
-        <footer className="text-sm text-gray-600">
-          <p>
-            Want this page tuned for a target keyword or persona? I can add keyword-optimized headings, a FAQ
-            section (with FAQ schema), and an expanded features table that targets commercial intent terms.
-          </p>
-        </footer>
       </section>
     </main>
   );
