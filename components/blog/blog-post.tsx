@@ -127,9 +127,9 @@ export function BlogPost({ post, userId }: BlogPostProps) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
         <div>
           By{" "}
-          <Link href={`/author/${post.author.id}`} className="font-medium text-foreground hover:underline">
+          <span title="This blog is just for demo!" className="font-medium text-foreground hover:underline">
             {post.author.name}
-          </Link>
+          </span>
         </div>
         <div>{format(new Date(post.publishedAt || post.createdAt), "MMMM d, yyyy")}</div>
         <div className="flex items-center">

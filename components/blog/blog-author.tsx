@@ -24,7 +24,7 @@ export function BlogAuthor({ author }: BlogAuthorProps) {
         {author.bio && <p className="text-muted-foreground">{author.bio}</p>}
       </div>
       <Button asChild variant="outline">
-        <Link href={`/author/${author.id}`}>View Profile</Link>
+        NA - Just a Demo
       </Button>
     </div>
   )
