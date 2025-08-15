@@ -73,11 +73,6 @@ export async function GET(
       console.error(`Redis SET error for key ${cacheKey}:`, e);
     }
     
-    // 6. Increment usage counter only on a successful DB fetch
-    await db.organization.update({
-        where: { id: org.id },
-        data: { monthlyPostViews: { increment: 1 } },
-    });
 
     const response = NextResponse.json(post);
     if (warning) {

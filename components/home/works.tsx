@@ -30,7 +30,7 @@ export function Works() {
           className="relative mt-12"
         >
           <Image
-            src="/placeholder-blog.png" // Replace with an actual image of a beautiful blog layout
+            src="/ditblogs-work.png" // Replace with an actual image of a beautiful blog layout
             alt="Example of a blog page powered by DITBlogs"
             width={1200}
             height={800}

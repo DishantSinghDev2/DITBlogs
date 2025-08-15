@@ -36,6 +36,8 @@ export default withAuth(
       if (pathname !== "/onboarding") {
         return NextResponse.redirect(onboardingUrl);
       }
+
+      return NextResponse.redirect(dashboardUrl)
     }
   },
   {
