@@ -1,3 +1,4 @@
+"use client";
 import { CodeBlock } from "@/components/docs/CodeBlock";
 import { motion } from "framer-motion";
 

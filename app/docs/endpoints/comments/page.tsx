@@ -1,3 +1,4 @@
+"use client";
 import { Badge } from "@/components/docs/Badge";
 import { CodeBlock } from "@/components/docs/CodeBlock";
 import { Endpoint } from "@/components/docs/Endpoint";

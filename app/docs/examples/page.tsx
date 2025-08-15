@@ -1,3 +1,4 @@
+"use client";
 import { CodeBlock } from "@/components/docs/CodeBlock";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
