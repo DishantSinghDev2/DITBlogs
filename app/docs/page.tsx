@@ -25,7 +25,7 @@ export default function IntroductionPage() {
       <p className="text-gray-600 dark:text-gray-400 mb-4">
         All API endpoints are relative to the following base URL:
       </p>
-      <CodeBlock code="https://www.yourdomain.com/api/v1" language="text" />
+      <CodeBlock code="https://blogs.dishis.tech/api/v1" language="text" />
 
       <Alert type="info">
         <p>
