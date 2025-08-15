@@ -115,7 +115,7 @@ export default function DITBlogsPricingPage() {
                                     </div>
                                     <div className="mt-8">
                                         {plan.id === 'FREE' ? (
-                                            <Link href="/register?product=ditblogs" className="w-full"><Button variant="outline" className="w-full">Get Started</Button></Link>
+                                            <Link href="/auth/login?product=ditblogs" className="w-full"><Button variant="outline" className="w-full">Get Started</Button></Link>
                                         ) : plan.id === 'CUSTOM' ? (
                                             <Link href="/contact?subject=DITBlogs Custom Plan" className="w-full"><Button className="w-full">Contact Sales</Button></Link>
                                         ) : (
