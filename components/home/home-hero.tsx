@@ -30,7 +30,7 @@ export function HomeHero() {
             className="space-x-4"
           >
             <Button asChild size="lg">
-              <Link href="/blog">Explore a Demo Blog</Link>
+              <Link href="/blog/beyond-the-classroom-unpacking-the-world-of-hack-club">Explore a Demo Blog</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
               <Link href="/auth/login">Get Started for Free</Link>
