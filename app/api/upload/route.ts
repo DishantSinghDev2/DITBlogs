@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const response = await fetch("https://upload-images-hosting-get-url.p.rapidapi.com/upload", {
       method: "POST",
       headers: {
-        "x-rapidapi-key": "e973e51e4amshab2d42c92a50214p178e13jsn7ddbd1e429f2",
+        "x-rapidapi-key": process.env.IMG_HOST_API_KEY || '',
         "x-rapidapi-host": "upload-images-hosting-get-url.p.rapidapi.com",
         "Content-Type": "application/x-www-form-urlencoded",
       },

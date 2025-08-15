@@ -95,7 +95,7 @@
     "react-use": "^17.6.0",
     "recharts": "latest",
     "redis": "^5.8.0",
-    "sass": "^1.87.0",
+    "sass": "^1.90.0",
     "slugify": "latest",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",

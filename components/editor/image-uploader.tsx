@@ -118,9 +118,6 @@ export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) 
             <ImageIcon className="mr-2 h-4 w-4" />
             Upload Image
           </DialogTitle>
-          <Button variant="ghost" size="icon" className="absolute right-4 top-4" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
         </DialogHeader>
 
         <div className="space-y-4">
