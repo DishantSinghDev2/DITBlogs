@@ -15,7 +15,7 @@ export function CodeBlock({ code, language }: { code: string; language: string }
   };
 
   return (
-    <div className="relative my-6 bg-[#282c34] rounded-lg">
+    <div className="relative my-6 bg-[#282c34] rounded-lg overflow-auto max-w-full">
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
         <span className="text-xs font-mono text-gray-400 uppercase">{language}</span>
         <button
