@@ -27,7 +27,7 @@ export function Works() {
           whileInView={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
           viewport={{ once: true, amount: 0.5 }}
-          className="relative mt-12"
+          className="relative mt-12 flex justify-center w-full"
         >
           <Image
             src="/ditblogs-work.png" // Replace with an actual image of a beautiful blog layout

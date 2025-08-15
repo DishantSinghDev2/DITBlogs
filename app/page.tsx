@@ -14,7 +14,7 @@ export default async function HomePage() {
         <HowItWorks />
         <Features />
         <Works />
-        <Reviews />
+        {/* <Reviews /> */}
         <NewsletterCta />
       </main>
       <SiteFooter />
