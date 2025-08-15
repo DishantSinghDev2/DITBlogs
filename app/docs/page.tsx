@@ -43,7 +43,7 @@ export default function IntroductionPage() {
         <code>YOUR_API_KEY</code> with your actual key.
       </p>
       <CodeBlock
-        code={`curl --request GET \\\n     --url 'https://www.yourdomain.com/api/v1/posts' \\\n     --header 'Authorization: Bearer YOUR_API_KEY'`}
+        code={`curl --request GET \\\n     --url 'https://blogs.dishis.tech/api/v1/posts' \\\n     --header 'Authorization: Bearer YOUR_API_KEY'`}
         language="bash"
       />
     </motion.div>

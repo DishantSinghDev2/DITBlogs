@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 export default function ExamplesPage() {
   const curlExample = `API_KEY="YOUR_API_KEY"
-BASE_URL="https://www.yourdomain.com/api/v1"
+BASE_URL="https://blogs.dishis.tech/api/v1"
 POST_SLUG="my-first-blog-post"
 
 # 1. Fetch the post's comments to see existing discussion
@@ -23,7 +23,7 @@ curl -X POST "$BASE_URL/comments" \\
      }'`;
 
   const nodeExample = `const API_KEY = process.env.DITBLOGS_API_KEY;
-const BASE_URL = 'https://www.yourdomain.com/api/v1';
+const BASE_URL = 'https://blogs.dishis.tech/api/v1';
 
 async function getComments(postSlug) {
   const url = \`\${BASE_URL}/comments?postSlug=\${postSlug}\`;
@@ -79,7 +79,7 @@ main();`;
 import requests
 
 API_KEY = os.getenv("DITBLOGS_API_KEY")
-BASE_URL = "https://www.yourdomain.com/api/v1"
+BASE_URL = "https://blogs.dishis.tech/api/v1"
 POST_SLUG = "my-first-blog-post"
 
 def get_comments(slug):

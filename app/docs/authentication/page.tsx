@@ -45,7 +45,7 @@ export default function AuthenticationPage() {
         organization's categories.
       </p>
       <CodeBlock
-        code={`curl --request GET \\\n     --url 'https://www.yourdomain.com/api/v1/categories' \\\n     --header 'Authorization: Bearer YOUR_API_KEY' \\\n     --header 'Content-Type: application/json'`}
+        code={`curl --request GET \\\n     --url 'https://blogs.dishis.tech/api/v1/categories' \\\n     --header 'Authorization: Bearer YOUR_API_KEY' \\\n     --header 'Content-Type: application/json'`}
         language="bash"
       />
     </motion.div>
