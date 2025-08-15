@@ -93,6 +93,7 @@ model User {
 
   @@index([email])
   @@index([organizationId])
+  ContactMessage ContactMessage[]
 }
 
 model Organization {
@@ -397,4 +398,21 @@ model WebhookEvent {
   webhook         Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
   
   @@index([webhookId])
+}
+
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  message   String   @db.Text // Use Text for longer messages
+
+  // Optional: Link to a user if they are logged in
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Tracking fields
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
 }

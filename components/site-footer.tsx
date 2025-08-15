@@ -36,7 +36,7 @@ export function SiteFooter({ variant = 'full' }: SiteFooterProps) {
   const footerNavigation = {
     main: [
       { name: "Home", href: "/" },
-      { name: "Blog", href: "/blog" },
+      { name: "Docs", href: "/docs" },
       { name: "About", href: "/about" },
       { name: "Contact", href: "/contact" },
     ],
