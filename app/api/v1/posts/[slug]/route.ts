@@ -47,6 +47,7 @@ export async function GET(
         slug: slug,
       },
       select: {
+        id: true,
         title: true,
         slug: true,
         content: true,
@@ -72,7 +73,19 @@ export async function GET(
     } catch (e) {
       console.error(`Redis SET error for key ${cacheKey}:`, e);
     }
-    
+
+    await db.postView.create({
+      data: {
+        post: {
+          connect: { id: post.id },
+        },
+      },
+    })
+
+    await db.organization.update({
+      where: { id: org.id },
+      data: { monthlyPostViews: { increment: 1 } },
+    });
 
     const response = NextResponse.json(post);
     if (warning) {
