@@ -19,13 +19,16 @@ type ActiveTab = "upload" | "generate"
 
 export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) {
   const { toast } = useToast()
-  
+
   // State for both upload and generation
   const [isUploading, setIsUploading] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [imageUrl, setImageUrl] = useState("")
   const [uploadProgress, setUploadProgress] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // State to track if the current imageUrl is a temporary AI-generated one
+  const [isAiUrl, setIsAiUrl] = useState(false)
 
   // State for AI Generation
   const [prompt, setPrompt] = useState("")
@@ -61,6 +64,7 @@ export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) 
 
       if (data.imageUrl) {
         setImageUrl(data.imageUrl);
+        setIsAiUrl(true); // Mark this URL as a temporary AI-generated URL
         toast({
           title: "Success",
           description: "Image generated successfully.",
@@ -84,8 +88,9 @@ export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) 
   async function uploadImage(file: File) {
     setIsUploading(true);
     setUploadProgress(0);
-    setImageUrl("") // Clear previous image
-  
+    setImageUrl(""); // Clear previous image
+    setIsAiUrl(false); // This is a direct upload, not an AI URL
+
     try {
       // Convert file to base64 using a Promise
       const base64Image = await new Promise<string>((resolve, reject) => {
@@ -94,10 +99,10 @@ export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) 
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = () => reject(new Error("Failed to read file"));
       });
-  
+
       // Extract the base64 data
       const base64Data = base64Image.split(",")[1];
-  
+
       // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
@@ -108,7 +113,7 @@ export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) 
           return prev + 10;
         });
       }, 200);
-  
+
       try {
         const response = await fetch("/api/upload", {
           method: "POST",
@@ -118,17 +123,17 @@ export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) 
             name: file.name,
           }),
         });
-  
+
         clearInterval(progressInterval);
-  
+
         if (!response.ok) {
           throw new Error("Failed to upload image");
         }
-  
+
         const data = await response.json();
         setUploadProgress(100);
-        setImageUrl(data.url);
-  
+        setImageUrl(data.url); // This URL is the final one from your server
+
         toast({
           title: "Success",
           description: "Image uploaded successfully",
@@ -155,16 +160,73 @@ export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) 
     }
   }
 
-  function handleInsert() {
-    if (imageUrl) {
-      onImageUploaded(imageUrl)
-      onClose()
+  async function handleInsert() {
+    if (!imageUrl) return
+
+    // If the image is from AI, we must first upload it to our own server
+    if (isAiUrl) {
+        setIsUploading(true) // Use the uploading state for user feedback
+        setUploadProgress(0)
+
+        try {
+            // 1. Fetch the AI-generated image data
+            const response = await fetch(imageUrl)
+            const blob = await response.blob()
+
+            // Create a file name from the prompt or use a default
+            const fileName = prompt.trim().replace(/\s+/g, '-').slice(0, 40) || "ai-generated-image"
+            const file = new File([blob], `${fileName}.png`, { type: "image/png" })
+
+            // 2. Convert to base64 for the upload API
+            const base64Image = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader()
+                reader.readAsDataURL(file)
+                reader.onload = () => resolve(reader.result as string)
+                reader.onerror = (error) => reject(error)
+            })
+            const base64Data = base64Image.split(",")[1]
+
+            // 3. Upload to the /api/upload endpoint
+            const uploadResponse = await fetch("/api/upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    image: base64Data,
+                    name: file.name,
+                }),
+            })
+
+            if (!uploadResponse.ok) {
+                throw new Error("Failed to save the generated image.")
+            }
+
+            const uploadData = await uploadResponse.json()
+            setUploadProgress(100)
+
+            // 4. Use the final URL from our server
+            onImageUploaded(uploadData.url)
+            onClose()
+
+        } catch (error) {
+            toast({
+                title: "Upload Error",
+                description: "Failed to save the AI image. Please try again.",
+                variant: "destructive",
+            })
+        } finally {
+            setIsUploading(false)
+        }
+    } else {
+        // If it's a regular upload, the URL is already the final one
+        onImageUploaded(imageUrl)
+        onClose()
     }
   }
 
   function resetState() {
     setImageUrl("")
     setPrompt("")
+    setIsAiUrl(false)
     if (fileInputRef.current) {
         fileInputRef.current.value = ""
     }
@@ -246,7 +308,7 @@ export function ImageUploader({ onClose, onImageUploaded }: ImageUploaderProps) 
                     <div className="space-y-4 h-48 flex flex-col justify-center">
                         <p className="text-sm text-gray-600">Describe the image you want to create.</p>
                         <div className="flex gap-2">
-                            <Input 
+                            <Input
                                 placeholder="e.g., A futuristic cityscape at sunset"
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
