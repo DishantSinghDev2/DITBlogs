@@ -3,6 +3,7 @@ import type { NodeViewProps } from "@tiptap/react"
 import { NodeViewWrapper } from "@tiptap/react"
 import { CloseIcon } from "@/components/tiptap-icons/close-icon"
 import "@/components/tiptap-node/image-upload-node/image-upload-node.scss"
+import { v4 as uuidv4 } from 'uuid';
 
 export interface FileItem {
   id: string
@@ -41,7 +42,7 @@ function useFileUpload(options: UploadOptions) {
     const abortController = new AbortController()
 
     const newFileItem: FileItem = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       file,
       progress: 0,
       status: "uploading",
