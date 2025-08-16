@@ -195,14 +195,14 @@ const MainToolbarContent = ({
       </ToolbarGroup>
       <ToolbarSeparator />
       <ToolbarGroup>
+        <Button type="button" onClick={() => setShowAiAssistant(true)} aria-label="AI Assistant">
+          <Sparkles className="h-4 w-4 mr-1" /> AI
+        </Button>
+      </ToolbarGroup>
+      <ToolbarGroup>
         <ImageUploadButton />
         {!isMobile ? <EmbedPopover /> : <EmbedButton onClick={onEmbedClick} />}
         {!isMobile ? <AdPlaceholderPopover /> : <AdPlaceholderButton onClick={onAdPlaceholderClick} />}
-      </ToolbarGroup>
-      <ToolbarGroup>
-        <Button type="button" onClick={() => setShowAiAssistant(true)} aria-label="AI Assistant">
-          <Sparkles className="h-4 w-4" />
-        </Button>
       </ToolbarGroup>
       <Spacer />
       {isMobile && <ToolbarSeparator />}
