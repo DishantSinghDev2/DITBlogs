@@ -53,7 +53,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
-import { CodeIcon, DollarSign, Loader2, Save, Sparkles, Upload } from "lucide-react" // Added Upload icon
+import { CodeIcon, DollarSign, Loader2, PenSquare, Save, Sparkles, Upload } from "lucide-react" // Added Upload icon
 
 // --- Tiptap Node ---
 import { ImageUploadNode } from "@/components/tiptap-node/image-upload-node/image-upload-node-extension"
