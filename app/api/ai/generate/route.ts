@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
         model: "gemini-2.0-flash-preview-image-generation",
       });
 
+      // Request image generation
       const result = await model.generateContent({
         contents: [
           {
@@ -95,18 +96,24 @@ export async function POST(req: NextRequest) {
           },
         ],
         generationConfig: {
-          candidateCount: 1, // works fine for image generation
+          candidateCount: 1, // can set >1 to get multiple variations
         },
       });
 
       const response = await result.response;
 
-      const imageParts = response.candidates?.[0]?.content?.parts?.filter(
-        (part) =>
-          part.inlineData && part.inlineData.mimeType.startsWith("image/")
-      );
+      // Look for inline image data inside the candidates
+      const imageParts =
+        response.candidates?.flatMap((c) =>
+          c.content?.parts?.filter(
+            (part) =>
+              part.inlineData &&
+              part.inlineData.mimeType &&
+              part.inlineData.mimeType.startsWith("image/")
+          ) || []
+        ) || [];
 
-      if (imageParts && imageParts.length > 0 && imageParts[0].inlineData) {
+      if (imageParts.length > 0 && imageParts[0].inlineData) {
         const { mimeType, data } = imageParts[0].inlineData;
         const imageUrl = `data:${mimeType};base64,${data}`;
 
@@ -130,11 +137,10 @@ export async function POST(req: NextRequest) {
           "Image generation response was empty or invalid:",
           JSON.stringify(response, null, 2)
         );
-        throw new Error(
-          "Image generation failed: No image data found in the response."
-        );
+        throw new Error("Image generation failed: No image data found in the response.");
       }
     }
+
     else {
       // Use the specified model for text-based tasks
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
