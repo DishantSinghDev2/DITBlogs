@@ -1,6 +1,18 @@
+// /app/api/upload/route.ts
+
 import { type NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+
+// --- START: ADD THIS CONFIGURATION ---
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "25mb", // Set desired value here
+    },
+  },
+}
+// --- END: ADD THIS CONFIGURATION ---
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,7 +45,10 @@ export async function POST(req: NextRequest) {
     })
 
     if (!response.ok) {
-      throw new Error("Failed to upload image")
+        // Log the external API's response for better debugging
+        const errorBody = await response.text();
+        console.error("External API Error:", errorBody);
+        throw new Error("Failed to upload image to external service");
     }
 
     const data = await response.json()
