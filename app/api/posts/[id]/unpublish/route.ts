@@ -45,7 +45,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
         // 2. Delete the live Post
         await tx.post.delete({ where: { id: id } });
-        
+
         // Return both the original post (for the webhook) and the new draft (for the API response)
         return { originalPost: post, newDraft };
     });
@@ -54,9 +54,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { originalPost, newDraft } = transactionResult;
 
     // 3. Invalidate caches
+    // --- Invalidate all relevant Redis caches ---
     await redis.del(`v1:post:${originalPost.organizationId}:${originalPost.slug}`);
     const keys = await redis.keys(`v1:posts:${originalPost.organizationId}:*`);
     if (keys.length > 0) await redis.del(keys);
+
+    // Also delete legacy/simple cache by slug
+    await redis.del(`post:${originalPost.slug}`);
+
 
     // 4. Trigger webhooks using the data from the now-deleted post
     await triggerWebhooks(originalPost.organizationId, 'post.unpublished', { post: originalPost });

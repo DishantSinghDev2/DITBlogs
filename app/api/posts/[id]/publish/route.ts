@@ -31,7 +31,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         categoryId: draft.categoryId,
         publishedAt: new Date(),
     };
-    
+
     let publishedPost;
     if (draft.postId) {
         // This is an update to an existing live post
@@ -48,9 +48,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     // --- Invalidate all relevant Redis caches ---
+    // --- Invalidate all relevant Redis caches ---
     await redis.del(`v1:post:${publishedPost.organizationId}:${publishedPost.slug}`);
     const keys = await redis.keys(`v1:posts:${publishedPost.organizationId}:*`);
     if (keys.length > 0) await redis.del(keys);
+
+    // Also delete legacy/simple cache by slug
+    await redis.del(`post:${publishedPost.slug}`);
+
 
     // --- NEW: Trigger webhooks ---
     await triggerWebhooks(publishedPost.organizationId, 'post.published', { post: publishedPost });
