@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { JSONContent } from "@tiptap/core";
 
 // Initialize the Google Generative AI with your API key
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
+const genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_GEMINI_API_KEY! });
 
 async function convertTextToJSONContent(text: string): Promise<JSONContent> {
   try {
@@ -83,38 +83,25 @@ export async function POST(req: NextRequest) {
     let responseData: { content: JSONContent };
 
     if (mode === "image") {
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-preview-image-generation",
-      });
-
-      // Request image generation
-      const result = await model.generateContent({
+      const result = genAI.models.generateContent({
+        model: 'gemini-2.0-flash-preview-image-generation',
         contents: [
           {
             role: "user",
             parts: [{ text: `Generate an image of: ${prompt}` }],
           },
         ],
-        generationConfig: {
-          candidateCount: 1, // can set >1 to get multiple variations
+        config: {
+          responseModalities: ['Text', 'Image'],
+          candidateCount: 1,
         },
       });
 
-      const response = await result.response;
+      const parts = (await result).candidates[0].content?.parts;
+    const imagePart = parts?.find((p: any) => p.inlineData);
 
-      // Look for inline image data inside the candidates
-      const imageParts =
-        response.candidates?.flatMap((c) =>
-          c.content?.parts?.filter(
-            (part) =>
-              part.inlineData &&
-              part.inlineData.mimeType &&
-              part.inlineData.mimeType.startsWith("image/")
-          ) || []
-        ) || [];
-
-      if (imageParts.length > 0 && imageParts[0].inlineData) {
-        const { mimeType, data } = imageParts[0].inlineData;
+    if (imagePart?.inlineData?.data) {
+        const { mimeType, data } = imagePart.inlineData;
         const imageUrl = `data:${mimeType};base64,${data}`;
 
         responseData = {
@@ -135,7 +122,7 @@ export async function POST(req: NextRequest) {
       } else {
         console.error(
           "Image generation response was empty or invalid:",
-          JSON.stringify(response, null, 2)
+          JSON.stringify(result, null, 2)
         );
         throw new Error("Image generation failed: No image data found in the response.");
       }
@@ -143,7 +130,7 @@ export async function POST(req: NextRequest) {
 
     else {
       // Use the specified model for text-based tasks
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const model = genAI.models;
 
       let systemPrompt = "";
       let userPrompt = "";
@@ -210,14 +197,15 @@ export async function POST(req: NextRequest) {
       }
 
       const result = await model.generateContent({
+        model: "gemini-2.5-flash",
         contents: [
           { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] },
         ],
       });
 
-      const response = result.response;
-      const generatedText = response.text();
-      responseData = { content: await convertTextToJSONContent(generatedText) };
+      const response = (await result).candidates[0].content;
+      const generatedText = response?.parts[0].text
+      responseData = { content: await convertTextToJSONContent(generatedText || '') };
     }
 
     return NextResponse.json(responseData);

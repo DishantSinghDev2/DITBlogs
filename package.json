@@ -12,6 +12,7 @@
   "dependencies": {
     "@auth/prisma-adapter": "latest",
     "@floating-ui/react": "^0.27.8",
+    "@google/genai": "^1.14.0",
     "@google/generative-ai": "latest",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^5.0.1",
