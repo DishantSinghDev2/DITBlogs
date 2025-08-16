@@ -95,7 +95,7 @@ export default function RootLayout({
               <div className="relative flex min-h-screen flex-col max-w-[100vw] mx-auto">
                 <SiteHeader />
                 <Suspense>
-                  <div className="">{children}</div>
+                  <div className="w-full mx-auto">{children}</div>
                 </Suspense>
               </div>
               <Analytics />
