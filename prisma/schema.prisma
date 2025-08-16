@@ -244,6 +244,7 @@ model Draft {
 
   // --- NEW: Relation back to a live Post ---
   // This will be set if the draft is an edit of an already published post.
+  originPostId   String? // <- new non-FK field to keep the ID around for audit
   postId String?
   post   Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
 

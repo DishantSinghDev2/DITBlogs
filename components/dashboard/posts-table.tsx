@@ -113,6 +113,7 @@ export function PostsTable({ content, pagination, currentStatus, query }: PostsT
         title: `Post ${isPublished ? 'Unpublished' : 'Published'}`,
         description: `The post has been moved to ${isPublished ? 'drafts' : 'published posts'}.`
       });
+      console.log(await response.json())
       startTransition(() => {
         router.refresh();
       });

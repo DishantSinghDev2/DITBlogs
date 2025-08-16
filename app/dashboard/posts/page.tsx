@@ -9,6 +9,7 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell-child";
 import { PostsTable } from "@/components/dashboard/posts-table";
 import { Button } from "@/components/ui/button";
 import { getUserContent } from "@/lib/api/posts"; // Use the correct, refactored function
+import { db } from "@/lib/db";
 
 export default async function PostsPage({
   searchParams,
@@ -32,6 +33,14 @@ export default async function PostsPage({
   const status = sP.status || 'published'; // Default to the 'published' tab
   const query = sP.query || "";
   const { content, pagination } = await getUserContent(session.user.id, page, per_page, status, query);
+
+  const drafts = await db.draft.findMany({
+    where: {
+      authorId: session.user.id
+    }
+  })
+
+  console.log('Content', drafts)
 
 
   return (
