@@ -2,44 +2,14 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { JSONContent } from "@tiptap/core"; // Import JSONContent
+import { JSONContent } from "@tiptap/core";
 
 // Initialize the Google Generative AI with your API key
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
 
-const defaultContent: JSONContent = {
-  type: "doc",
-  content: [
-    {
-      type: "paragraph",
-      content: [
-        {
-          type: "text",
-          text: "Start writing here...",
-        },
-      ],
-    },
-  ],
-};
-
-async function validateJSONContent(content: JSONContent): Promise<boolean> {
-  // Basic validation to ensure the content matches the required structure
-  return (
-    content.type === "doc" &&
-    Array.isArray(content.content) &&
-    content.content.every(
-      (node) =>
-        node.type &&
-        node.content &&
-        Array.isArray(node.content) &&
-        node.content.length > 0 // Ensure the node has non-empty content
-    )
-  );
-}
-
 async function convertTextToJSONContent(text: string): Promise<JSONContent> {
   try {
-    // 1. Attempt to directly parse the text. This works if the AI is already generating valid JSON.
+    // 1. Attempt to directly parse the text.
     try {
       const parsedContent: JSONContent = JSON.parse(text);
       // Filter out empty nodes
@@ -99,7 +69,6 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -111,17 +80,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
     }
 
-    // Select the appropriate model
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    let responseData: { content: JSONContent };
 
-    let systemPrompt = "";
-    let userPrompt = "";
+    if (mode === "image") {
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-preview-image-generation" });
 
-    // Configure the prompt based on the mode
-    // Configure the prompt based on the mode
-    switch (mode) {
-      case "write":
-        systemPrompt = `
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+
+      const imageParts = response.candidates?.[0]?.content?.parts?.filter(
+        (part) => part.inlineData && part.inlineData.mimeType.startsWith("image/")
+      );
+
+      // Check if we found any valid image parts and if the first part has inlineData
+      if (imageParts && imageParts.length > 0 && imageParts[0].inlineData) {
+        // This check above satisfies TypeScript. Now we can safely access inlineData.
+        const { mimeType, data } = imageParts[0].inlineData;
+        const imageUrl = `data:${mimeType};base64,${data}`;
+
+        responseData = {
+          content: {
+            type: "doc",
+            content: [
+              {
+                type: "image",
+                attrs: {
+                  src: imageUrl,
+                  alt: prompt,
+                  title: prompt,
+                },
+              },
+            ],
+          },
+        };
+      } else {
+        console.error("Image generation response was empty or invalid:", JSON.stringify(response, null, 2));
+        throw new Error("Image generation failed: No image data found in the response.");
+      }
+    } else {
+      // Use the specified model for text-based tasks
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+      let systemPrompt = "";
+      let userPrompt = "";
+
+      switch (mode) {
+        case "write":
+          systemPrompt = `
       I. Core (Must Follow):
       JSON: Every document is a single JSON object: {"type": "doc", "content": [ ... ]}.
       content Array: Holds document elements (paragraphs, headings, lists, etc.) in correct order.
@@ -144,12 +149,12 @@ export async function POST(req: NextRequest) {
       Strict Schema: AI must follow the exact element structure.
 
       You are a professional blog writer. Write high-quality, engaging content based on the user's request. Return the content in JSON format that is suitable for a Tiptap editor. Content should be in JSON format. Do not include any other text or explanation at all.
-    `;
-        userPrompt = prompt;
-        break;
-      case "improve":
-        systemPrompt = `
-      I. Core (Must Follow):
+        `;
+          userPrompt = prompt;
+          break;
+        case "improve":
+          systemPrompt = `
+                I. Core (Must Follow):
       JSON: Every document is a single JSON object: {"type": "doc", "content": [ ... ]}.
       content Array: Holds document elements (paragraphs, headings, lists, etc.) in correct order.
       
@@ -172,73 +177,31 @@ export async function POST(req: NextRequest) {
 
       You are a professional editor. Improve the following content while maintaining its original meaning. Return the content in JSON format that is suitable for a Tiptap editor. Content should be updated by instruction. No extra text or explanation.
       Content should be in JSON format. Do not include any other text or explanation at all.
-    `;
-        userPrompt = `Improve the following content based on this instruction: ${prompt}\n\nContent to improve: ${currentContent}`;
-        break;
-      case "image":
-        systemPrompt = `
-      You are a professional image description generator. Create detailed image descriptions that can be used for AI image generation.
-    `;
-        userPrompt = `Create a detailed image description for: ${prompt}`;
-        break;
-      default:
-        systemPrompt = `
-      I. Core (Must Follow):
-      JSON: Every document is a single JSON object: {"type": "doc", "content": [ ... ]}.
-      content Array: Holds document elements (paragraphs, headings, lists, etc.) in correct order.
-      
-      II. Element Syntax (Examples):
-      Paragraph: {"type": "paragraph", "content": [{"type": "text", "text": "text"}]}
-      Heading: {"type": "heading", "attrs": {"level": 1}, "content": [{"type": "text", "text": "text"}]} (level: 1-6)
-      Bullet List: {"type": "bulletList", "content": [list items...]} (each item is a listItem containing a paragraph)
-      Code Block: {"type": "codeBlock", "attrs": {"language": "javascript"}, "content": [{"type": "text", "text": "code"}]} (language optional)
-      Image: {"type": "image", "attrs": {"src": "url", "alt": "alt", "title": "title"}}
-      Horizontal Rule: {"type": "horizontalRule"}
-      Task List: {"type": "taskList", "content": [task items...]} (each item is taskItem with attrs: {"checked": true/false})
-      Blockquote: {"type": "blockquote", "content": [ paragraph]}
-      
-      III. Text Formatting (Marks):
-      Apply to text: {"type": "text", "text": "text", "marks": [mark array]}
-      Marks: "bold", "italic", "code", "strike", "superscript", "subscript", "link" (requires href, target, rel), "highlight" (requires color)
-      
-      IV. AI Keys (Consistency):
-      Strict Schema: AI must follow the exact element structure.
 
-      You are a helpful writing assistant. Return the content in JSON format that is suitable for a Tiptap editor.
-    `;
-        userPrompt = prompt;
-    }
+        `;
+          userPrompt = `Improve the following content based on this instruction: ${prompt}\n\nContent to improve: ${currentContent}`;
+          break;
+        default:
+          return NextResponse.json({ error: "Invalid mode provided" }, { status: 400 });
+      }
 
+      const result = await model.generateContent({
+        contents: [
+          { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] },
+        ],
+      });
 
-    // Generate content
-    const result = await model.generateContent({
-      contents: [
-        { role: "user", parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] },
-      ],
-    });
-
-    const response = result.response;
-    const generatedText = response.text();
-
-    // Validate and return data based on the mode
-    let responseData: { content: JSONContent };
-    switch (mode) {
-      case "write":
-      case "improve":
-        responseData = { content: await convertTextToJSONContent(generatedText) };
-        break;
-      case "image":
-        responseData = { content: defaultContent }; // Image case must return JSONContent as well. It's best to provide default content or an error.
-        break;
-      default:
-        responseData = { content: await convertTextToJSONContent(generatedText) };
+      const response = result.response;
+      const generatedText = response.text();
+      responseData = { content: await convertTextToJSONContent(generatedText) };
     }
 
     return NextResponse.json(responseData);
   } catch (error) {
     console.error("AI generation error:", error);
+    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
     return NextResponse.json(
-      { error: "Failed to generate content" },
+      { error: "Failed to generate content", details: errorMessage },
       { status: 500 }
     );
   }
