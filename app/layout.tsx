@@ -12,6 +12,7 @@ import { SiteFooter } from "@/components/site-footer"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 import "./index.scss"
+import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s | DITBlogs",
   },
   description: "Power your website with a seamless, feature-rich blog. DITBlogs provides the headless backend, a powerful editor, and full organization management.",
-  
+
   // --- SEO Keywords ---
   keywords: [
     "headless blog",
@@ -36,7 +37,7 @@ export const metadata: Metadata = {
     "team collaboration",
     "content marketing",
   ],
-  
+
   // --- Author and Creator ---
   authors: [
     {
@@ -90,28 +91,29 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            <AuthProvider>
-              {/* Step 2: Place NextTopLoader here, right inside the providers */}
-              <NextTopLoader
-                color="#2299DD"
-                initialPosition={0.08}
-                crawlSpeed={200}
-                height={3}
-                crawl={true}
-                showSpinner={true}
-                easing="ease"
-                speed={200}
-                shadow="0 0 10px #2299DD,0 0 5px #2299DD"
-              />
-              <div className="relative flex min-h-screen flex-col max-w-[100vw] mx-auto">
-                <SiteHeader />
-                {/* Step 3: Remove the <Suspense> wrapper, it's not needed for this loader */}
-                <main className="flex-1 w-full mx-auto">{children}</main>
-                <SiteFooter />
-              </div>
-              <Analytics />
-              <Toaster />
-            </AuthProvider>
+          <AuthProvider>
+            {/* Step 2: Place NextTopLoader here, right inside the providers */}
+            <NextTopLoader
+              color="#1faaff"
+              initialPosition={0.08}
+              crawlSpeed={200}
+              height={3}
+              crawl={true}
+              showSpinner={true}
+              easing="ease"
+              speed={200}
+              shadow="0 0 10px #1faaff,0 0 5px #1faaff"
+            />
+            <div className="relative flex min-h-screen flex-col max-w-[100vw] mx-auto">
+              <SiteHeader />
+              <Suspense>
+                <div className="w-full mx-auto">{children}</div>
+              </Suspense>
+              <SiteFooter />
+            </div>
+            <Analytics />
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
