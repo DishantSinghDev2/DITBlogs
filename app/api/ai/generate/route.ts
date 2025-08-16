@@ -83,18 +83,33 @@ export async function POST(req: NextRequest) {
     let responseData: { content: JSONContent };
 
     if (mode === "image") {
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-preview-image-generation" });
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash-preview-image-generation",
+      });
 
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(
+        {
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: `Generate an image of: ${prompt}` }],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "image/png", // Request image output
+            candidateCount: 1,
+          },
+        }
+      );
+
       const response = await result.response;
 
       const imageParts = response.candidates?.[0]?.content?.parts?.filter(
-        (part) => part.inlineData && part.inlineData.mimeType.startsWith("image/")
+        (part) =>
+          part.inlineData && part.inlineData.mimeType.startsWith("image/")
       );
 
-      // Check if we found any valid image parts and if the first part has inlineData
       if (imageParts && imageParts.length > 0 && imageParts[0].inlineData) {
-        // This check above satisfies TypeScript. Now we can safely access inlineData.
         const { mimeType, data } = imageParts[0].inlineData;
         const imageUrl = `data:${mimeType};base64,${data}`;
 
@@ -114,8 +129,13 @@ export async function POST(req: NextRequest) {
           },
         };
       } else {
-        console.error("Image generation response was empty or invalid:", JSON.stringify(response, null, 2));
-        throw new Error("Image generation failed: No image data found in the response.");
+        console.error(
+          "Image generation response was empty or invalid:",
+          JSON.stringify(response, null, 2)
+        );
+        throw new Error(
+          "Image generation failed: No image data found in the response."
+        );
       }
     } else {
       // Use the specified model for text-based tasks
