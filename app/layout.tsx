@@ -1,6 +1,9 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+// Step 1: Import NextTopLoader
+import NextTopLoader from 'nextjs-toploader';
+
 import { Analytics } from "@/components/analytics"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/providers/auth-provider"
@@ -9,7 +12,6 @@ import { SiteFooter } from "@/components/site-footer"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 import "./index.scss"
-import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -48,7 +50,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: process.env.NEXTAUTH_URL || "https://blogs.dishis.tech", // Use your production URL
+    url: process.env.NEXTAUTH_URL || "https://blogs.dishis.tech",
     title: "DITBlogs: The Effortless Blogging Platform for Your Business",
     description: "Power your website with a seamless, feature-rich blog, including a powerful editor and organization management.",
     siteName: "DITBlogs",
@@ -67,14 +69,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "DITBlogs: Effortless Blogging for Your Business",
     description: "Power your website with a seamless, feature-rich blog, including a powerful editor and organization management.",
-    // Optional: Add your Twitter handle
-    // creator: "@yourTwitterHandle", 
-    // Optional: Add the same OG image here
     images: [`${process.env.NEXTAUTH_URL}/og-image.png`],
   },
 
   // --- Icons and Manifest ---
-  // (These paths point to files in your /public directory. No changes needed unless filenames are different)
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon-16x16.png",
@@ -82,6 +80,7 @@ export const metadata: Metadata = {
   },
   manifest: "/site.webmanifest",
 }
+
 export default function RootLayout({
   children,
 }: {
@@ -92,11 +91,23 @@ export default function RootLayout({
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
             <AuthProvider>
+              {/* Step 2: Place NextTopLoader here, right inside the providers */}
+              <NextTopLoader
+                color="#2299DD"
+                initialPosition={0.08}
+                crawlSpeed={200}
+                height={3}
+                crawl={true}
+                showSpinner={true}
+                easing="ease"
+                speed={200}
+                shadow="0 0 10px #2299DD,0 0 5px #2299DD"
+              />
               <div className="relative flex min-h-screen flex-col max-w-[100vw] mx-auto">
                 <SiteHeader />
-                <Suspense>
-                  <div className="w-full mx-auto">{children}</div>
-                </Suspense>
+                {/* Step 3: Remove the <Suspense> wrapper, it's not needed for this loader */}
+                <main className="flex-1 w-full mx-auto">{children}</main>
+                <SiteFooter />
               </div>
               <Analytics />
               <Toaster />
