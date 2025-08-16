@@ -87,20 +87,17 @@ export async function POST(req: NextRequest) {
         model: "gemini-2.0-flash-preview-image-generation",
       });
 
-      const result = await model.generateContent(
-        {
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `Generate an image of: ${prompt}` }],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: "image/png", // Request image output
-            candidateCount: 1,
+      const result = await model.generateContent({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `Generate an image of: ${prompt}` }],
           },
-        }
-      );
+        ],
+        generationConfig: {
+          candidateCount: 1, // works fine for image generation
+        },
+      });
 
       const response = await result.response;
 
@@ -137,7 +134,8 @@ export async function POST(req: NextRequest) {
           "Image generation failed: No image data found in the response."
         );
       }
-    } else {
+    }
+    else {
       // Use the specified model for text-based tasks
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
