@@ -6,11 +6,11 @@ import { useState, useEffect } from "react"
 type SwitchProps = {
   id?: string
   checked?: boolean
-  onChange?: (value: boolean) => void
+  onCheckedChange?: (value: boolean) => void
   className?: string
 }
 
-export default function Switch({ id, checked = false, onChange, className = "" }: SwitchProps) {
+export function Switch({ id, checked = false, onCheckedChange, className = "" }: SwitchProps) {
   const [isOn, setIsOn] = useState(checked)
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function Switch({ id, checked = false, onChange, className = "" }
   const toggleSwitch = () => {
     const next = !isOn
     setIsOn(next)
-    onChange?.(next)
+    onCheckedChange?.(next)
   }
 
   return (
