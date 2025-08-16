@@ -628,25 +628,48 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   const handleAiSuggestion = useCallback(
     (suggestion: any) => {
-      if (editor && suggestion) {
-        console.log("AI suggestion:", suggestion);
-        // Use JSON for better structure preservation if suggestion is JSON
-        const isJson = typeof suggestion === 'object';
+      if (!editor || !suggestion) return;
+
+      console.log("AI suggestion:", suggestion);
+      const isJson = typeof suggestion === "object";
+
+      // Special case: if suggestion is an image-only node, prepend instead of replacing
+      const isImageOnly =
+        isJson &&
+        suggestion.type === "doc" &&
+        Array.isArray(suggestion.content) &&
+        suggestion.content.length === 1 &&
+        suggestion.content[0].type === "image";
+
+      if (isImageOnly) {
+        const imageNode = suggestion.content[0];
+        editor.chain().focus().insertContentAt(0, imageNode).run();
+      } else {
+        // Normal case: replace content
         editor.commands.setContent(suggestion, false);
-        // Re-trigger title/slug update after AI content sets
-        const newH1 = findFirstH1Text(editor);
-        if (newH1) {
-          form.setValue('title', newH1, { shouldValidate: true, shouldDirty: true });
-          // Only auto-slug if not manually edited
-          if (!isSlugManuallyEdited.current) {
-            form.setValue('slug', generateSlug(newH1), { shouldValidate: true, shouldDirty: true });
-          }
-        }
-        form.setValue('content', isJson ? editor.getHTML() : suggestion, { shouldValidate: true, shouldDirty: true });
       }
+
+      // Re-trigger title/slug update after AI content sets
+      const newH1 = findFirstH1Text(editor);
+      if (newH1) {
+        form.setValue("title", newH1, { shouldValidate: true, shouldDirty: true });
+        if (!isSlugManuallyEdited.current) {
+          form.setValue("slug", generateSlug(newH1), {
+            shouldValidate: true,
+            shouldDirty: true,
+          });
+        }
+      }
+
+      form.setValue(
+        "content",
+        isJson ? editor.getHTML() : suggestion,
+        { shouldValidate: true, shouldDirty: true }
+      );
     },
-    [editor, form],
-  )
+    [editor, form]
+  );
+
 
   // --- Mobile Toolbar Positioning ---
   React.useEffect(() => {
