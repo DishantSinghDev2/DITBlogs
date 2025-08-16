@@ -1,3 +1,4 @@
+// /home/dit/blogs/DITBlogs/app/api/cron/send-newsletter/route.ts
 import { db } from "@/lib/db";
 import { sendNewsletterEmail } from "@/lib/email";
 import { subDays } from "date-fns";
@@ -19,7 +20,6 @@ export async function GET(req: Request) {
             const newPosts = await db.post.findMany({
                 where: {
                     organizationId: org.id,
-                    published: true,
                     publishedAt: { gte: sevenDaysAgo },
                 },
                 select: { title: true, slug: true, excerpt: true }
