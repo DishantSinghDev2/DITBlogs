@@ -29,7 +29,7 @@ export default function OnboardingFlow() {
   const { toast } = useToast();
   const { update } = useSession();
 
-  const [view, setView] = useState<OnboardingView>('loading');
+  const [view, setView] = useState<OnboardingView | null>('loading');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -134,6 +134,7 @@ export default function OnboardingFlow() {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
+    setView('loading')
 
     const formData = new FormData(event.currentTarget);
     const orgName = formData.get("orgName") as string;
@@ -155,6 +156,7 @@ export default function OnboardingFlow() {
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message);
+      setView('createForm')
     } finally {
       setIsLoading(false);
     }
