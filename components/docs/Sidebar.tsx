@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/docs", label: "Introduction" },
+  { href: "/docs/sdk", label: "TypeScript SDK" }, // <-- Add new SDK link here
   { href: "/docs/authentication", label: "Authentication" },
   {
-    label: "API Endpoints", // Changed label for clarity
+    label: "API Endpoints",
     items: [
       { href: "/docs/endpoints/posts", label: "Posts" },
       { href: "/docs/endpoints/categories", label: "Categories" },
