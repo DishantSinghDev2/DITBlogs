@@ -17,21 +17,6 @@ interface AiAssistantProps {
   currentContent: string
 }
 
-const defaultContent: JSONContent = { // Define your default content
-  type: "doc",
-  content: [
-    {
-      type: "paragraph",
-      content: [
-        {
-          type: "text",
-          text: "Start writing here...",
-        },
-      ],
-    },
-  ],
-};
-
 export function AiAssistant({ onClose, onSuggestion, currentContent }: AiAssistantProps) {
   const { toast } = useToast()
   const [prompt, setPrompt] = useState("")
