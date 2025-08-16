@@ -493,32 +493,76 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   // --- Final Publish/Update Logic ---
   async function onSubmit(values: z.infer<typeof postSchema>) {
-    // Before publishing, ensure any last-minute changes are saved.
+    // Prevent submission if already in progress or if the form is invalid
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    // Stop any pending auto-save before proceeding
     if (autoSaveTimer.current) {
       clearTimeout(autoSaveTimer.current);
     }
-    // Awaiting here ensures the final content is saved before publishing.
-    await handleAutoSave();
 
-    setIsSubmitting(true);
     try {
-      const finalDraftId = currentDraftId || post?.id;
-      if (!finalDraftId) throw new Error("No draft to publish.");
-      const response = await fetch(`/api/posts/${currentDraftId}/publish`, {
+      // Perform a final save to ensure the latest content is captured.
+      // This also handles creating a new draft if one doesn't exist yet.
+      setSaveStatus('saving');
+      const latestValues = form.getValues();
+      const content = editor?.getHTML() || latestValues.content;
+      const payload = { ...latestValues, content, organizationId };
+
+      let finalDraftId = currentDraftId;
+
+      // Determine the API endpoint for saving the draft (create or update)
+      const draftApiEndpoint = finalDraftId ? `/api/drafts/${finalDraftId}` : '/api/drafts';
+      const draftApiMethod = finalDraftId ? 'PUT' : 'POST';
+
+      const saveResponse = await fetch(draftApiEndpoint, {
+        method: draftApiMethod,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error("Failed to save the final draft before publishing.");
+      }
+
+      const savedDraft = await saveResponse.json();
+      finalDraftId = savedDraft.id; // Ensure we have the ID for the next step
+      setSaveStatus('saved');
+      setLastSaved(new Date(savedDraft.updatedAt));
+
+      // Now, publish the post using the final draft ID
+      const publishResponse = await fetch(`/api/posts/${finalDraftId}/publish`, {
         method: 'POST',
       });
-      if (!response.ok) throw new Error("Failed to publish post.");
 
-      toast({ title: "Post Published!", description: "Your post is now live." });
+      if (!publishResponse.ok) {
+        const errorData = await publishResponse.json();
+        throw new Error(errorData.message || "An unknown error occurred during publishing.");
+      }
+
+      toast({
+        title: post ? "Post Updated!" : "Post Published!",
+        description: "Your post is now live.",
+      });
+
+      // Redirect to the main posts list and force a refresh of the data
       router.push('/dashboard/posts');
       router.refresh();
-    } catch (error: any) {
-      toast({ title: "Error Publishing", description: error.message, variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
 
+    } catch (error: any) {
+      console.error("Publishing error:", error);
+      toast({
+        title: "Error Publishing",
+        description: error.message,
+        variant: "destructive",
+      });
+      setIsSubmitting(false); // Re-enable the button on failure
+    }
+    // No need for a `finally` block to set isSubmitting to false,
+    // as successful submission navigates away from the page.
+  }
   // --- Handler for Draft Selection Dialog ---
   const handleSelectDraft = (draft: any) => {
     form.reset(draft);
@@ -841,16 +885,28 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
           <Separator />
 
           {/* --- Action Buttons --- */}
-          {/* --- Action Buttons with Save Status --- */}
+          {/* --- Action Buttons with Save Status and Disabled State --- */}
           <div className="flex items-center justify-end space-x-4">
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               {saveStatus === 'saving' && <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>}
               {saveStatus === 'saved' && lastSaved && <><Clock className="h-4 w-4" /> Last saved {format(lastSaved, "h:mm:ss a")}</>}
               {saveStatus === 'error' && <span className="text-destructive">Save failed</span>}
             </div>
-            <Button type="button" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Publishing..." : <><Save className="mr-2 h-4 w-4" /> {post ? 'Update Post' : 'Publish'}</>}
+            <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting || saveStatus === 'saving' || !form.formState.isDirty}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  {post ? <PenSquare className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+                  {post ? 'Update Post' : 'Publish'}
+                </>
+              )}
             </Button>
           </div>
         </form>

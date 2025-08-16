@@ -71,12 +71,12 @@ export default function DITBlogsPricingPage() {
 
     return (
         <>
-            <div className="min-h-screen bg-white ">
+            <div className="min-h-screen bg-white dark:bg-black">
                 <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 my-5">
                     {/* Hero Section */}
                     <div className="py-24 text-center">
-                        <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">DITBlogs Pricing</h1>
-                        <p className="mt-6 text-lg leading-8 text-gray-600">Powerful blogging, simple pricing. Choose your plan.</p>
+                        <h1 className="text-4xl font-bold tracking-tight dark:text-white text-gray-900 sm:text-5xl">DITBlogs Pricing</h1>
+                        <p className="mt-6 text-lg leading-8 dark:text-gray-200 text-gray-600">Powerful blogging, simple pricing. Choose your plan.</p>
                         <div className="mt-10 flex items-center justify-center space-x-4">
                             <Label>Monthly</Label>
                             <Switch checked={isYearly} onCheckedChange={setIsYearly} />
