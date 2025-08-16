@@ -918,7 +918,7 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
             <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting || saveStatus === 'saving' || !form.formState.isDirty}>
+            <Button type="submit" disabled={isSubmitting || saveStatus === 'saving'}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
