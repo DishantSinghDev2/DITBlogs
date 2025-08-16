@@ -94,6 +94,18 @@ model User {
   @@index([email])
   @@index([organizationId])
   ContactMessage ContactMessage[]
+  NotificationSettings NotificationSettings[]
+}
+
+model NotificationSettings {
+  id                  String   @id @default(cuid())
+  emailNotifications  Boolean  @default(true)
+  marketingEmails     Boolean  @default(false)
+  newComment          Boolean  @default(true)
+
+  // This defines the relationship and makes userId unique
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Organization {

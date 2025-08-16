@@ -41,7 +41,7 @@ interface UserSettingsProps {
     email: string
     image: string | null
     bio: string | null
-    emailVerified: Date | null
+    emailVerified: boolean
     notificationSettings: {
       emailNotifications: boolean
       marketingEmails: boolean
@@ -297,7 +297,11 @@ export function UserSettings({ user }: UserSettingsProps) {
               <h3 className="font-medium">Email Address</h3>
               <p className="text-sm text-muted-foreground">{user.email}</p>
               <p className="text-sm text-muted-foreground">{user.emailVerified ? "Verified" : "Not verified"}</p>
-
+              <Button variant="outline" size="sm">
+                <a target="_blank" href="https://whatsyour.info/settings">
+                  Verify on WYI
+                </a>
+              </Button>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium">Password</h3>

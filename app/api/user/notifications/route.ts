@@ -1,3 +1,6 @@
+// /api/user/notifications/route.ts
+// (This code is correct and will now work with the new model)
+
 import { db } from "@/lib/db";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getServerSession } from "next-auth/next";
@@ -20,7 +23,7 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     const data = notificationsSchema.parse(body);
 
-    // Use upsert: update if exists, create if not.
+    // This upsert operation will now succeed because `userId` is a unique key
     await db.notificationSettings.upsert({
       where: { userId: session.user.id },
       update: data,

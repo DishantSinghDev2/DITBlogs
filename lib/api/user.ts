@@ -18,7 +18,7 @@ export const getUserById = cache(async (userId: string) => {
       image: true,
       bio: true,
       createdAt: true,
-      // The user's role within their organization
+      emailVerified: true,
       role: true,
       // Details about the organization the user belongs to
       organization: {
