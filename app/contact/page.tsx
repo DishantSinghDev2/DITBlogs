@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ContactPage() {
 
   return (
-    <div className="container py-8">
+    <div className=" py-8">
       <div className="max-w-2xl mx-auto">
         <ContactForm />
       </div>

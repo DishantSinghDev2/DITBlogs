@@ -190,7 +190,7 @@ export default function OnboardingFlow() {
   }
 
   return (
-    <div className="container flex min-h-screen w-screen flex-col items-center justify-center bg-white dark:bg-black">
+    <div className="flex min-h-screen w-screen flex-col items-center justify-center bg-white dark:bg-black">
       <AnimatePresence mode="wait">
         <motion.div
           key={view}

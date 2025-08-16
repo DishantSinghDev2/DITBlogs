@@ -109,7 +109,6 @@ export default function RootLayout({
               <Suspense>
                 <div className="w-full mx-auto">{children}</div>
               </Suspense>
-              <SiteFooter />
             </div>
             <Analytics />
             <Toaster />

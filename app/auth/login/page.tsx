@@ -49,14 +49,14 @@ export default function AuthPage() {
   // Render a loading state or null while session is being determined
   if (status === "loading" || status === "authenticated") {
     return (
-      <div className="container flex h-screen w-screen items-center justify-center">
+      <div className="flex h-screen w-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center bg-background">
+    <div className="flex h-screen w-screen flex-col items-center justify-center bg-background">
       <Card className="w-full max-w-md animate-fade-in-up">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-semibold">Welcome Back</CardTitle>
