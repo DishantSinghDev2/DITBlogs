@@ -582,7 +582,7 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormDescription>Automatically updated from the first H1 in the editor.</FormDescription>
-                  <FormControl><Input readOnly placeholder="Auto-generated from editor H1" {...field} className="bg-muted/50 border-dashed" /></FormControl>
+                  <FormControl><Input placeholder="Auto-generated from editor H1" {...field} className="bg-muted/50 border-dashed" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
