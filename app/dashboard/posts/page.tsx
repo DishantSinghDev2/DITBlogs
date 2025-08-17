@@ -34,15 +34,6 @@ export default async function PostsPage({
   const query = sP.query || "";
   const { content, pagination } = await getUserContent(session.user.id, page, per_page, status, query);
 
-  const drafts = await db.draft.findMany({
-    where: {
-      authorId: session.user.id
-    }
-  })
-
-  console.log('Content', drafts)
-
-
   return (
     <DashboardShell>
       <DashboardHeader heading="Content" text="Manage your drafts and published posts.">
