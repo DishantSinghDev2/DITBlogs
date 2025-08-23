@@ -389,10 +389,12 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   const handleAutoSave = useCallback(async () => {
     if (!form.formState.isDirty) {
+      console.log('form isn not dirty inside auto save callback')
         setSaveStatus('idle');
         return;
     }
     setSaveStatus('saving');
+    console.log('saving draft post automatically')
 
     const isValid = await form.trigger();
     if (!isValid) {
