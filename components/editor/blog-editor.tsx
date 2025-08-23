@@ -389,12 +389,10 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   const handleAutoSave = useCallback(async () => {
     if (!form.formState.isDirty) {
-      console.log('form isn not dirty inside auto save callback')
         setSaveStatus('idle');
         return;
     }
     setSaveStatus('saving');
-    console.log('saving draft post automatically')
 
     const isValid = await form.trigger();
     if (!isValid) {
@@ -440,11 +438,9 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   useEffect(() => {
     if (form.formState.isDirty) {
-      console.log("passed if for auto save")
       setSaveStatus('idle');
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
       autoSaveTimer.current = setTimeout(() => {
-        console.log("auto saving...")
         handleAutoSave();
       }, 3000);
     }
@@ -468,8 +464,6 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
             const payload = { ...latestValues, organizationId };
             const draftApiEndpoint = finalDraftId ? `/api/drafts/${finalDraftId}` : '/api/drafts';
             const draftApiMethod = finalDraftId ? 'PUT' : 'POST';
-
-            console.log(draftApiEndpoint, draftApiMethod)
 
             const saveResponse = await fetch(draftApiEndpoint, {
                 method: draftApiMethod,
