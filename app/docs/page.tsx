@@ -18,6 +18,20 @@ export default function IntroductionPage() {
         access to manage and retrieve your blog content, including posts,
         categories, tags, and comments.
       </p>
+      <div className="flex justify-center">
+        <video
+          width="640"
+          height="360"
+          controls
+          autoPlay={false}
+          muted
+          loop
+          className="rounded-xl shadow-lg"
+        >
+          <source src="/vdo-guide.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
 
       <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mt-12 mb-4">
         Base URL
