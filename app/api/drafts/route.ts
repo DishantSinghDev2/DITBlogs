@@ -37,16 +37,41 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) return new NextResponse("Unauthorized", { status: 401 });
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return new NextResponse("Unauthorized", { status: 401 });
 
-    const user = await db.user.findUnique({ where: {id: session.user.id}, select: { organizationId: true } });
-    if (!user?.organizationId) return new NextResponse("User not in an org", { status: 403 });
+  const user = await db.user.findUnique({ where: { id: session.user.id }, select: { organizationId: true } });
+  if (!user?.organizationId) return new NextResponse("User not in an org", { status: 403 });
 
-    const body = await req.json();
+  const body = await req.json();
 
-    const newDraft = await db.draft.create({
-        data: { ...body, authorId: session.user.id, organizationId: user.organizationId }
-    });
-    return NextResponse.json(newDraft);
+  const newDraft = await db.draft.create({
+    data: {
+      title: body.title,
+      slug: body.slug,
+      excerpt: body.excerpt,
+      featuredImage: body.featuredImage,
+      metaTitle: body.metaTitle,
+      metaDescription: body.metaDescription,
+      content: body.content,
+      authorId: session.user.id,
+      organizationId: user.organizationId,
+      categoryId: body.categoryId,
+      // --- FIX TAGS ---
+      tags: body.tags
+        ? {
+          connectOrCreate: body.tags.map((tag: string) => ({
+            where: { slug: tag },
+            create: {
+              name: tag,
+              slug: tag,
+              organizationId: user.organizationId,
+            },
+          })),
+        }
+        : undefined,
+    },
+    include: { tags: true },
+  });
+  return NextResponse.json(newDraft);
 }
