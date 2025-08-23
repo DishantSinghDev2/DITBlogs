@@ -4,6 +4,10 @@
 
 The effortless, headless blogging platform designed for your business. Power your existing website with a feature-rich, collaborative blog without the hassle of a separate CMS.
 
+## Video guide
+[![Click to play](https://via.placeholder.com/640x360?text=Play+Video)](https://blogs.dishis.tech/vdo-guide.mp4)
+
+
 ## ✨ What is DITBlogs?
 
 Tired of spinning up a whole new WordPress site or struggling with a clunky CMS just to add a blog to your company's website? **DITBlogs is the solution.**
