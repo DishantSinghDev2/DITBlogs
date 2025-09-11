@@ -180,6 +180,18 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  cookies: {
+    sessionToken: {
+      name: `__Secure-next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === "production",
+        domain: ".dishis.tech", // Must match DITMail's setting
+      },
+    },
+  },
 };
 
 const handler = NextAuth(authOptions);
