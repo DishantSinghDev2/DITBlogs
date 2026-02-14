@@ -21,7 +21,7 @@ export async function GET(
   }
 
   // 2. Define a unique cache key
-  const cacheKey = `v1:post:${org.id}:${slug}`;
+  const cacheKey = `v2:post:${org.id}:${slug}`;
   let cachedPost: string | null = null;
 
   try {
