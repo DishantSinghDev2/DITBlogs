@@ -49,8 +49,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     // --- Invalidate all relevant Redis caches ---
     // --- Invalidate all relevant Redis caches ---
-    await redis.del(`v1:post:${publishedPost.organizationId}:${publishedPost.slug}`);
-    const keys = await redis.keys(`v1:posts:${publishedPost.organizationId}:*`);
+    await redis.del(`v2:post:${publishedPost.organizationId}:${publishedPost.slug}`);
+    const keys = await redis.keys(`v2:posts:${publishedPost.organizationId}:*`);
     if (keys.length > 0) await redis.del(keys);
 
     // Also delete legacy/simple cache by slug

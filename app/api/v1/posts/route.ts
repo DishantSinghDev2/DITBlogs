@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   const skip = (page - 1) * limit;
 
   // 3. Create a dynamic cache key
-  const cacheKey = `v1:posts:${org.id}:cat=${categorySlug}:tag=${tagSlug}:p=${page}:l=${limit}`;
+  const cacheKey = `v2:posts:${org.id}:cat=${categorySlug}:tag=${tagSlug}:p=${page}:l=${limit}`;
   
   try {
     // 4. Check cache first
