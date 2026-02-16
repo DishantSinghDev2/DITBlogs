@@ -61,6 +61,19 @@ import "@/components/tiptap-node/code-block-node/code-block-node.scss"
 import "@/components/tiptap-node/list-node/list-node.scss"
 import "@/components/tiptap-node/image-node/image-node.scss"
 import "@/components/tiptap-node/paragraph-node/paragraph-node.scss"
+import { Table } from "@tiptap/extension-table"
+import { TableRow } from "@tiptap/extension-table-row"
+import { TableCell } from "@tiptap/extension-table-cell"
+import { TableHeader } from "@tiptap/extension-table-header"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { TableIcon } from "lucide-react"
 
 // --- Tiptap UI ---
 import { HeadingDropdownMenu } from "@/components/tiptap-ui/heading-dropdown-menu"
@@ -137,6 +150,104 @@ const postSchema = z.object({
   tags: z.array(z.string()).optional(),
 })
 
+
+const TableDropdownMenu = () => {
+  const { editor } = React.useContext(EditorContext) as { editor: Editor | null }
+  if (!editor) return null
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          data-style="ghost"
+          aria-label="Table options"
+          // Highlight the button when cursor is inside a table
+          data-active={editor.isActive("table") ? "true" : undefined}
+        >
+          <TableIcon className="tiptap-button-icon h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel>Insert</DropdownMenuLabel>
+        <DropdownMenuItem
+          onSelect={() =>
+            editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+          }
+        >
+          Insert Table (3×3)
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Columns</DropdownMenuLabel>
+        <DropdownMenuItem
+          disabled={!editor.can().addColumnBefore()}
+          onSelect={() => editor.chain().focus().addColumnBefore().run()}
+        >
+          Add Column Before
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!editor.can().addColumnAfter()}
+          onSelect={() => editor.chain().focus().addColumnAfter().run()}
+        >
+          Add Column After
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!editor.can().deleteColumn()}
+          onSelect={() => editor.chain().focus().deleteColumn().run()}
+        >
+          Delete Column
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Rows</DropdownMenuLabel>
+        <DropdownMenuItem
+          disabled={!editor.can().addRowBefore()}
+          onSelect={() => editor.chain().focus().addRowBefore().run()}
+        >
+          Add Row Before
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!editor.can().addRowAfter()}
+          onSelect={() => editor.chain().focus().addRowAfter().run()}
+        >
+          Add Row After
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!editor.can().deleteRow()}
+          onSelect={() => editor.chain().focus().deleteRow().run()}
+        >
+          Delete Row
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Merge</DropdownMenuLabel>
+        <DropdownMenuItem
+          disabled={!editor.can().mergeCells()}
+          onSelect={() => editor.chain().focus().mergeCells().run()}
+        >
+          Merge Cells
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!editor.can().splitCell()}
+          onSelect={() => editor.chain().focus().splitCell().run()}
+        >
+          Split Cell
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={!editor.can().deleteTable()}
+          className="text-destructive focus:text-destructive"
+          onSelect={() => editor.chain().focus().deleteTable().run()}
+        >
+          Delete Table
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
 // --- Toolbar Components (Keep as is) ---
 const MainToolbarContent = ({
   onHighlighterClick,
@@ -194,6 +305,7 @@ const MainToolbarContent = ({
         <TextAlignButton align="justify" />
       </ToolbarGroup>
       <ToolbarSeparator />
+
       <ToolbarGroup>
         <Button type="button" onClick={() => setShowAiAssistant(true)} aria-label="AI Assistant">
           <Sparkles className="h-4 w-4 mr-1" /> AI
@@ -201,6 +313,7 @@ const MainToolbarContent = ({
       </ToolbarGroup>
       <ToolbarGroup>
         <ImageUploadButton />
+        <TableDropdownMenu />   {/* ← add this */}
         {!isMobile ? <EmbedPopover /> : <EmbedButton onClick={onEmbedClick} />}
         {!isMobile ? <AdPlaceholderPopover /> : <AdPlaceholderButton onClick={onAdPlaceholderClick} />}
       </ToolbarGroup>
@@ -365,6 +478,10 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
       }),
       TrailingNode,
       Link.configure({ openOnClick: false }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: editorContent,
     onUpdate: ({ editor }) => {
@@ -376,10 +493,10 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
       const firstH1 = findFirstH1Text(editor);
       const currentTitle = form.getValues("title");
       if (firstH1 && firstH1 !== currentTitle) {
-          form.setValue("title", firstH1, { shouldValidate: true, shouldDirty: true });
-          if (!isSlugManuallyEdited.current) {
-              form.setValue("slug", generateSlug(firstH1), { shouldValidate: true, shouldDirty: true });
-          }
+        form.setValue("title", firstH1, { shouldValidate: true, shouldDirty: true });
+        if (!isSlugManuallyEdited.current) {
+          form.setValue("slug", generateSlug(firstH1), { shouldValidate: true, shouldDirty: true });
+        }
       }
     },
   })
@@ -389,20 +506,20 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   const handleAutoSave = useCallback(async () => {
     if (!form.formState.isDirty) {
-        setSaveStatus('idle');
-        return;
+      setSaveStatus('idle');
+      return;
     }
     setSaveStatus('saving');
 
     const isValid = await form.trigger();
     if (!isValid) {
-        setSaveStatus('error');
-        toast({
-            title: "Cannot save draft",
-            description: "Please check the highlighted fields for errors.",
-            variant: "destructive",
-        });
-        return;
+      setSaveStatus('error');
+      toast({
+        title: "Cannot save draft",
+        description: "Please check the highlighted fields for errors.",
+        variant: "destructive",
+      });
+      return;
     }
 
     const currentValues = form.getValues();
@@ -458,22 +575,22 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
 
     try {
-        let finalDraftId = currentDraftId;
-        if (form.formState.isDirty || !finalDraftId) {
-            const latestValues = form.getValues();
-            const payload = { ...latestValues, organizationId };
-            const draftApiEndpoint = finalDraftId ? `/api/drafts/${finalDraftId}` : '/api/drafts';
-            const draftApiMethod = finalDraftId ? 'PUT' : 'POST';
+      let finalDraftId = currentDraftId;
+      if (form.formState.isDirty || !finalDraftId) {
+        const latestValues = form.getValues();
+        const payload = { ...latestValues, organizationId };
+        const draftApiEndpoint = finalDraftId ? `/api/drafts/${finalDraftId}` : '/api/drafts';
+        const draftApiMethod = finalDraftId ? 'PUT' : 'POST';
 
-            const saveResponse = await fetch(draftApiEndpoint, {
-                method: draftApiMethod,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-            if (!saveResponse.ok) throw new Error("Failed to save the final draft before publishing.");
-            const savedDraft = await saveResponse.json();
-            finalDraftId = savedDraft.id;
-        }
+        const saveResponse = await fetch(draftApiEndpoint, {
+          method: draftApiMethod,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!saveResponse.ok) throw new Error("Failed to save the final draft before publishing.");
+        const savedDraft = await saveResponse.json();
+        finalDraftId = savedDraft.id;
+      }
 
       const publishResponse = await fetch(`/api/posts/${finalDraftId}/publish`, {
         method: 'POST',
@@ -523,19 +640,19 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
   }, [form]);
 
   const handleAiSuggestion = useCallback((suggestion: any) => {
-      if (!editor || !suggestion) return;
-      editor.commands.setContent(suggestion, true);
-      form.setValue("content", editor.getHTML(), { shouldValidate: true, shouldDirty: true });
-      setTimeout(() => {
-        const newH1 = findFirstH1Text(editor);
-        if (newH1) {
-            form.setValue("title", newH1, { shouldValidate: true, shouldDirty: true });
-            if (!isSlugManuallyEdited.current) {
-                form.setValue("slug", generateSlug(newH1), { shouldValidate: true, shouldDirty: true });
-            }
+    if (!editor || !suggestion) return;
+    editor.commands.setContent(suggestion, true);
+    form.setValue("content", editor.getHTML(), { shouldValidate: true, shouldDirty: true });
+    setTimeout(() => {
+      const newH1 = findFirstH1Text(editor);
+      if (newH1) {
+        form.setValue("title", newH1, { shouldValidate: true, shouldDirty: true });
+        if (!isSlugManuallyEdited.current) {
+          form.setValue("slug", generateSlug(newH1), { shouldValidate: true, shouldDirty: true });
         }
-      }, 100);
-    }, [editor, form]);
+      }
+    }, 100);
+  }, [editor, form]);
 
   useEffect(() => {
     if (!isMobile && mobileView !== "main") {
@@ -550,9 +667,9 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   if (!editor) {
     return (
-        <div className="flex h-full w-full items-center justify-center p-4">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
+      <div className="flex h-full w-full items-center justify-center p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     )
   }
 
@@ -658,13 +775,13 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
                     </SelectContent>
                   </Select>
                   <FormDescription>Group this post under a specific category.</FormDescription>
-                   <FormMessage />
+                  <FormMessage />
                 </FormItem>
               )}
             />
             <FormItem>
               <FormLabel>Tags / Keywords</FormLabel>
-                <div className="flex min-h-[40px] w-full flex-wrap items-center gap-2 rounded-md border border-input px-3 py-2">
+              <div className="flex min-h-[40px] w-full flex-wrap items-center gap-2 rounded-md border border-input px-3 py-2">
                 {tags.map(tag => (
                   <Badge key={tag} variant="secondary">
                     {tag}
@@ -702,7 +819,7 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
               )}
             </Toolbar>
             <div className="content-wrapper mt-2 rounded-md border bg-background shadow-sm">
-              <EditorContent editor={editor} className="simple-editor-content"/>
+              <EditorContent editor={editor} className="simple-editor-content" />
             </div>
             <FormMessage>{form.formState.errors.content?.message}</FormMessage>
           </EditorContext.Provider>
@@ -746,8 +863,8 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || saveStatus === 'saving' || !form.formState.isValid}>
-              {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>) 
-              : (<>{post ? <PenSquare className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} {post ? 'Update Post' : 'Publish'}</>)}
+              {isSubmitting ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Publishing...</>)
+                : (<>{post ? <PenSquare className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />} {post ? 'Update Post' : 'Publish'}</>)}
             </Button>
           </div>
         </form>

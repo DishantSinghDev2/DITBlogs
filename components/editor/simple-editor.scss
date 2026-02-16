@@ -82,3 +82,60 @@
     border-radius: 4px;
   }
 }
+
+.simple-editor-content {
+  /* ... your existing styles ... */
+
+  .ProseMirror {
+    table {
+      border-collapse: collapse;
+      table-layout: fixed;
+      width: 100%;
+      margin: 1rem 0;
+      overflow: hidden;
+
+      td, th {
+        min-width: 1em;
+        border: 1px solid hsl(var(--border));
+        padding: 6px 10px;
+        vertical-align: top;
+        box-sizing: border-box;
+        position: relative;
+
+        > * { margin-bottom: 0; }
+      }
+
+      th {
+        font-weight: 600;
+        background-color: hsl(var(--muted));
+        text-align: left;
+      }
+
+      // Selected cell highlight
+      .selectedCell::after {
+        z-index: 2;
+        position: absolute;
+        content: "";
+        left: 0; right: 0; top: 0; bottom: 0;
+        background: hsl(var(--primary) / 0.15);
+        pointer-events: none;
+      }
+
+      // Resize handle
+      .column-resize-handle {
+        position: absolute;
+        right: -2px;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: hsl(var(--primary));
+        pointer-events: none;
+      }
+    }
+
+    // Cursor shown while resizing
+    &.resize-cursor {
+      cursor: col-resize;
+    }
+  }
+}
