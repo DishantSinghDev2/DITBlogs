@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const { id } = params;
     const draft = await db.draft.findUnique({
         where: { id },
-        include: { tags: { select: { id: true } } }, // FIX 1: include tags from draft
+        include: { tags: { select: { id: true } } },
     });
 
     if (!draft || draft.authorId !== session.user.id) {
@@ -34,16 +34,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         publishedAt: new Date(),
     };
 
-    // FIX 1: Tag sync payload for Prisma
-    const tagSync = {
+    // `connect` for create, `set` for update — they are not interchangeable
+    const tagConnect = {
+        connect: draft.tags.map((t) => ({ id: t.id })),
+    };
+    const tagSet = {
         set: draft.tags.map((t) => ({ id: t.id })),
     };
 
     let publishedPost;
 
     if (draft.postId) {
-        // FIX 2: Fetch the EXISTING post's slug BEFORE updating,
-        // so we can invalidate the old cache key if the slug changed.
+        // Fetch the existing post's slug BEFORE updating so we can
+        // invalidate the old cache key if the slug changed.
         const existingPost = await db.post.findUnique({
             where: { id: draft.postId },
             select: { slug: true },
@@ -53,11 +56,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             where: { id: draft.postId },
             data: {
                 ...postData,
-                tags: tagSync, // FIX 1: sync tags on update
+                tags: tagSet, // set is valid on update
             },
         });
 
-        // FIX 2: If slug changed, delete the stale old-slug cache key too
+        // If slug changed, delete the stale old-slug cache keys too
         if (existingPost && existingPost.slug !== publishedPost.slug) {
             await redis.del(`v2:post:${publishedPost.organizationId}:${existingPost.slug}`);
             await redis.del(`post:${existingPost.slug}`);
@@ -68,7 +71,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         publishedPost = await db.post.create({
             data: {
                 ...postData,
-                tags: tagSync, // FIX 1: connect tags on create
+                tags: tagConnect, // connect is valid on create
             },
         });
         await db.draft.delete({ where: { id } });
