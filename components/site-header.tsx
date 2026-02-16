@@ -70,7 +70,7 @@ export function SiteHeader() {
 
   return (
     <header
-      className={`sticky top-0 px-4 z-50 w-full border-b ${isScrolled ? "bg-background/80 backdrop-blur-sm " : "bg-background"
+      className={`top-0 px-4 z-50 w-full border-b ${isScrolled ? "bg-background/80 backdrop-blur-sm " : "bg-background"
         } transition-all duration-200`}
     >
       <div className=" flex h-16 items-center justify-between">
