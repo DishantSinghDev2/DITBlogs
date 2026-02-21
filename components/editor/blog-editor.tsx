@@ -143,13 +143,15 @@ const postSchema = z.object({
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
   organizationId: z.string().min(1, "Organization ID is required."),
-  // --- FIX: Allow `null` as a valid value for categoryId ---
-  // This ensures that when the database returns `null` for an unassigned category,
-  // validation does not fail.
   categoryId: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
 })
 
+// --- Helper: normalize tags from API (objects) or plain strings ---
+function normalizeTags(raw: any[] | undefined | null): string[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw.map((t) => (typeof t === "string" ? t : t?.name ?? "")).filter(Boolean);
+}
 
 const TableDropdownMenu = () => {
   const { editor } = React.useContext(EditorContext) as { editor: Editor | null }
@@ -162,7 +164,6 @@ const TableDropdownMenu = () => {
           type="button"
           data-style="ghost"
           aria-label="Table options"
-          // Highlight the button when cursor is inside a table
           data-active={editor.isActive("table") ? "true" : undefined}
         >
           <TableIcon className="tiptap-button-icon h-4 w-4" />
@@ -248,7 +249,7 @@ const TableDropdownMenu = () => {
   )
 }
 
-// --- Toolbar Components (Keep as is) ---
+// --- Toolbar Components ---
 const MainToolbarContent = ({
   onHighlighterClick,
   onLinkClick,
@@ -313,7 +314,7 @@ const MainToolbarContent = ({
       </ToolbarGroup>
       <ToolbarGroup>
         <ImageUploadButton />
-        <TableDropdownMenu />   {/* ← add this */}
+        <TableDropdownMenu />
         {!isMobile ? <EmbedPopover /> : <EmbedButton onClick={onEmbedClick} />}
         {!isMobile ? <AdPlaceholderPopover /> : <AdPlaceholderButton onClick={onAdPlaceholderClick} />}
       </ToolbarGroup>
@@ -383,7 +384,10 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState<string[]>(post?.tags || []);
+
+  // FIX 1: Normalize tags from API objects to plain strings on init
+  const [tags, setTags] = useState<string[]>(normalizeTags(post?.tags));
+
   const planName = organizationPlan as keyof typeof PLAN_LIMITS;
   const planLimits = PLAN_LIMITS[planName];
 
@@ -440,8 +444,9 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
       metaDescription: post?.metaDescription || "",
       content: post?.content || defaultContent,
       organizationId: post?.organizationId || organizationId,
-      categoryId: post?.categoryId || null, // Ensure default is null, not undefined
-      tags: post?.tags || [],
+      categoryId: post?.categoryId || null,
+      // FIX 1: Normalize tags to strings in defaultValues too
+      tags: normalizeTags(post?.tags),
     },
     mode: 'onChange',
   })
@@ -522,9 +527,11 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
       return;
     }
 
+    // FIX 2: Snapshot form values BEFORE the async call so we capture
+    // exactly what the user had at the moment auto-save fired, not after.
     const currentValues = form.getValues();
+
     try {
-      let savedDraft;
       const payload = { ...currentValues, organizationId };
       const apiEndpoint = currentDraftId ? `/api/drafts/${currentDraftId}` : '/api/drafts';
       const apiMethod = currentDraftId ? 'PUT' : 'POST';
@@ -536,7 +543,7 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
       });
 
       if (!response.ok) throw new Error("Failed to save draft.");
-      savedDraft = await response.json();
+      const savedDraft = await response.json();
 
       if (!currentDraftId) {
         setCurrentDraftId(savedDraft.id);
@@ -545,7 +552,14 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
       setSaveStatus('saved');
       setLastSaved(new Date(savedDraft.updatedAt));
-      form.reset(savedDraft);
+
+      // FIX 2: Do NOT call form.reset(savedDraft) — that would replace whatever
+      // the user typed during the network round-trip. Instead, only sync back the
+      // server-assigned id and clear the dirty flag while keeping the live values.
+      form.reset(
+        { ...form.getValues(), id: savedDraft.id },
+        { keepDirty: false, keepTouched: true, keepValues: true }
+      );
 
     } catch (error) {
       setSaveStatus('error');
@@ -620,8 +634,16 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
     }
   }
 
+  // FIX 1 & 2 combined: normalize tags when loading a draft from the dialog
   const handleSelectDraft = (draft: any) => {
-    form.reset(draft);
+    const draftTags = normalizeTags(draft.tags);
+    setTags(draftTags);
+
+    form.reset(
+      { ...draft, tags: draftTags },
+      { keepDirty: false, keepTouched: false }
+    );
+
     if (editor) editor.commands.setContent(draft.content || '');
     setCurrentDraftId(draft.id);
     setLastSaved(new Date(draft.updatedAt));
@@ -677,7 +699,10 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
     <>
       <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Continue Your Work</DialogTitle><DialogDescription>You have unpublished drafts. Choose one to continue editing or start a new post.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Continue Your Work</DialogTitle>
+            <DialogDescription>You have unpublished drafts. Choose one to continue editing or start a new post.</DialogDescription>
+          </DialogHeader>
           <div className="space-y-2 py-4 max-h-[300px] overflow-y-auto">
             {drafts?.map(draft => (
               <button key={draft.id} onClick={() => handleSelectDraft(draft)} className="w-full text-left p-2 rounded-md hover:bg-accent">
@@ -689,6 +714,7 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
           <Button variant="outline" onClick={() => setIsDraftDialogOpen(false)}>Start a New Post</Button>
         </DialogContent>
       </Dialog>
+
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4 md:p-6">
           <div className="grid gap-4 md:grid-cols-2">
@@ -760,13 +786,11 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
-                  {/* FIX: Set value to handle `null` and add a "None" option */}
                   <Select
                     onValueChange={(value) => {
-                      // If user selects "none", set form value to null. Otherwise, use the selected value.
                       field.onChange(value === "--none--" ? null : value);
                     }}
-                    value={field.value || "--none--"} // Ensure `null` or `undefined` maps to the "None" selection
+                    value={field.value || "--none--"}
                   >
                     <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
                     <SelectContent>
@@ -805,7 +829,13 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
           <Separator />
 
           <EditorContext.Provider value={{ editor }}>
-            <Toolbar sticky className="custom-toolbar-scroll">
+            {/*
+              FIX 3: The toolbar is sticky but needs to sit *below* the fixed dashboard
+              header (typically 64px tall). We pass an inline style with `top: 64` so
+              it sticks just under the header instead of sliding behind it.
+              Adjust the value to match your actual header height if it differs.
+            */}
+            <Toolbar sticky className="custom-toolbar-scroll" style={{ top: 64 }}>
               {mobileView === "main" ? (
                 <MainToolbarContent
                   onEmbedClick={() => setMobileView("embed")}
