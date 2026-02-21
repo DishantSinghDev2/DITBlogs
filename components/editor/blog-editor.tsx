@@ -53,6 +53,16 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { CodeIcon, DollarSign, Loader2, PenSquare, Save, Sparkles, Upload } from "lucide-react"
 
 // --- Tiptap Node ---
@@ -151,6 +161,108 @@ const postSchema = z.object({
 function normalizeTags(raw: any[] | undefined | null): string[] {
   if (!raw || !Array.isArray(raw)) return [];
   return raw.map((t) => (typeof t === "string" ? t : t?.name ?? "")).filter(Boolean);
+}
+
+// ---------------------------------------------------------------------------
+// Hook: useUnsavedChangesGuard
+//
+// Handles two distinct navigation scenarios:
+//
+//   1. Browser-level navigation (refresh, tab close, address bar) — covered by
+//      the native `beforeunload` event. Browsers show their own built-in dialog
+//      so we just need to set `e.returnValue = ""` to trigger it.
+//
+//   2. In-app navigation (Next.js router.push / router.back / Link clicks) —
+//      the App Router has no router.events interception, so we wrap every
+//      intentional navigation call in `safeNavigate()`. If the form is dirty it
+//      queues the action and opens a shadcn AlertDialog; once the user confirms
+//      we execute it. If the form is clean we navigate immediately.
+// ---------------------------------------------------------------------------
+function useUnsavedChangesGuard(isDirty: boolean) {
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+
+  // Stores the navigation thunk the user tried to trigger before we
+  // intercepted it. Executed on confirm, discarded on cancel.
+  const pendingNavAction = useRef<(() => void) | null>(null);
+
+  // Layer 1 — browser refresh / tab close / address-bar navigation
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = ""; // Required to trigger the browser's built-in dialog
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
+  // Layer 2 — in-app navigation wrapper
+  const safeNavigate = useCallback(
+    (action: () => void) => {
+      if (!isDirty) {
+        action();
+        return;
+      }
+      pendingNavAction.current = action;
+      setShowLeaveDialog(true);
+    },
+    [isDirty]
+  );
+
+  const confirmLeave = useCallback(() => {
+    setShowLeaveDialog(false);
+    pendingNavAction.current?.();
+    pendingNavAction.current = null;
+  }, []);
+
+  const cancelLeave = useCallback(() => {
+    setShowLeaveDialog(false);
+    pendingNavAction.current = null;
+  }, []);
+
+  return { showLeaveDialog, safeNavigate, confirmLeave, cancelLeave };
+}
+
+// ---------------------------------------------------------------------------
+// UnsavedChangesDialog
+// Rendered once at the root of BlogEditor. Appears whenever safeNavigate is
+// called while the form is dirty.
+// ---------------------------------------------------------------------------
+function UnsavedChangesDialog({
+  open,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={(v) => { if (!v) onCancel(); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>You have unsaved changes</AlertDialogTitle>
+          <AlertDialogDescription>
+            Your draft hasn&apos;t been saved yet. Leaving now will discard any
+            changes you&apos;ve made since the last auto-save.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          {/* Primary action = stay, so it gets the default button style */}
+          <AlertDialogCancel onClick={onCancel}>
+            Keep editing
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Leave without saving
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
 const TableDropdownMenu = () => {
@@ -384,12 +496,33 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   const [categories, setCategories] = useState<any[]>([]);
   const [tagInput, setTagInput] = useState("");
-
-  // FIX 1: Normalize tags from API objects to plain strings on init
   const [tags, setTags] = useState<string[]>(normalizeTags(post?.tags));
 
   const planName = organizationPlan as keyof typeof PLAN_LIMITS;
   const planLimits = PLAN_LIMITS[planName];
+
+  const form = useForm<z.infer<typeof postSchema>>({
+    resolver: zodResolver(postSchema),
+    defaultValues: {
+      id: post?.id,
+      title: post?.title || "",
+      slug: post?.slug || "",
+      excerpt: post?.excerpt || "",
+      featuredImage: post?.featuredImage || "",
+      metaTitle: post?.metaTitle || "",
+      metaDescription: post?.metaDescription || "",
+      content: post?.content || defaultContent,
+      organizationId: post?.organizationId || organizationId,
+      categoryId: post?.categoryId || null,
+      tags: normalizeTags(post?.tags),
+    },
+    mode: 'onChange',
+  })
+
+  // Unsaved changes guard — must be called after form is initialised so
+  // form.formState.isDirty is available as a stable reference.
+  const { showLeaveDialog, safeNavigate, confirmLeave, cancelLeave } =
+    useUnsavedChangesGuard(form.formState.isDirty);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -431,25 +564,6 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
     })
     return firstH1Text
   }
-
-  const form = useForm<z.infer<typeof postSchema>>({
-    resolver: zodResolver(postSchema),
-    defaultValues: {
-      id: post?.id,
-      title: post?.title || "",
-      slug: post?.slug || "",
-      excerpt: post?.excerpt || "",
-      featuredImage: post?.featuredImage || "",
-      metaTitle: post?.metaTitle || "",
-      metaDescription: post?.metaDescription || "",
-      content: post?.content || defaultContent,
-      organizationId: post?.organizationId || organizationId,
-      categoryId: post?.categoryId || null,
-      // FIX 1: Normalize tags to strings in defaultValues too
-      tags: normalizeTags(post?.tags),
-    },
-    mode: 'onChange',
-  })
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -527,8 +641,6 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
       return;
     }
 
-    // FIX 2: Snapshot form values BEFORE the async call so we capture
-    // exactly what the user had at the moment auto-save fired, not after.
     const currentValues = form.getValues();
 
     try {
@@ -553,9 +665,7 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
       setSaveStatus('saved');
       setLastSaved(new Date(savedDraft.updatedAt));
 
-      // FIX 2: Do NOT call form.reset(savedDraft) — that would replace whatever
-      // the user typed during the network round-trip. Instead, only sync back the
-      // server-assigned id and clear the dirty flag while keeping the live values.
+      // Keep live values intact; only sync the id and clear the dirty flag
       form.reset(
         { ...form.getValues(), id: savedDraft.id },
         { keepDirty: false, keepTouched: true, keepValues: true }
@@ -619,6 +729,8 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
         description: "Your post is now live.",
       });
 
+      // Navigate directly after a successful publish — form is about to unmount
+      // so there's nothing left to guard.
       router.push('/dashboard/posts');
       router.refresh();
 
@@ -634,7 +746,6 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
     }
   }
 
-  // FIX 1 & 2 combined: normalize tags when loading a draft from the dialog
   const handleSelectDraft = (draft: any) => {
     const draftTags = normalizeTags(draft.tags);
     setTags(draftTags);
@@ -697,6 +808,13 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
 
   return (
     <>
+      {/* Unsaved-changes guard for in-app navigation */}
+      <UnsavedChangesDialog
+        open={showLeaveDialog}
+        onConfirm={confirmLeave}
+        onCancel={cancelLeave}
+      />
+
       <Dialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -829,12 +947,6 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
           <Separator />
 
           <EditorContext.Provider value={{ editor }}>
-            {/*
-              FIX 3: The toolbar is sticky but needs to sit *below* the fixed dashboard
-              header (typically 64px tall). We pass an inline style with `top: 64` so
-              it sticks just under the header instead of sliding behind it.
-              Adjust the value to match your actual header height if it differs.
-            */}
             <Toolbar sticky className="custom-toolbar-scroll" style={{ top: 64 }}>
               {mobileView === "main" ? (
                 <MainToolbarContent
@@ -889,7 +1001,13 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
               {saveStatus === 'error' && <span className="text-destructive">Save failed</span>}
               {saveStatus === 'idle' && form.formState.isDirty && <span className="text-muted-foreground">Unsaved changes</span>}
             </div>
-            <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isSubmitting}>
+            <Button
+              type="button"
+              variant="ghost"
+              // Route through safeNavigate so the guard can intercept if dirty
+              onClick={() => safeNavigate(() => router.back())}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || saveStatus === 'saving' || !form.formState.isValid}>
