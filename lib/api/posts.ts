@@ -1,6 +1,7 @@
 import { db } from "@/lib/db"
 import { redis } from "@/lib/redis"
 import { cache } from "react"
+import { UserRole } from "@prisma/client"
 
 export const getAllPosts = cache(
   async ({
@@ -20,9 +21,7 @@ export const getAllPosts = cache(
   }) => {
     const skip = (page - 1) * limit;
 
-    // Build the query
-    const query: any = {
-    };
+    const query: any = {};
 
     if (featured) {
       query.featured = true;
@@ -57,7 +56,6 @@ export const getAllPosts = cache(
       }
     }
 
-    // Get posts
     const posts = await db.post.findMany({
       where: query,
       include: {
@@ -82,10 +80,7 @@ export const getAllPosts = cache(
       take: limit,
     });
 
-    // Get total count
-    const total = await db.post.count({
-      where: query,
-    });
+    const total = await db.post.count({ where: query });
 
     const result = {
       posts,
@@ -97,10 +92,9 @@ export const getAllPosts = cache(
       },
     };
 
-    // Cache featured posts
     if (featured && page === 1 && !category && !tag && !search) {
       await redis.set("featured_posts", JSON.stringify(result), {
-        EX: 60 * 60, // 1 hour
+        EX: 60 * 60,
       });
     }
 
@@ -114,7 +108,6 @@ export const getPostBySlug = cache(async (slug: string, userId?: string) => {
     if (cached && typeof cached === "string") {
       const parsed = JSON.parse(cached);
       if (parsed && parsed.id) {
-        // If cache is found and userId is passed, compute isBookmarked here
         const isBookmarked = userId
           ? parsed.bookmarks?.some((b: { userId: string }) => b.userId === userId)
           : false;
@@ -162,45 +155,61 @@ export const getPostBySlug = cache(async (slug: string, userId?: string) => {
     ? post.bookmarks.some((b) => b.userId === userId)
     : false;
 
-
   const postWithComputed = {
     ...post,
     isBookmarked,
   };
 
-  // Cache the post *without* isBookmarked (since it's user-specific)
   const { isBookmarked: _, ...postToCache } = postWithComputed;
   await redis.set(`post:${slug}`, JSON.stringify(postToCache), {
-    EX: 60 * 60, // 1 hour
+    EX: 60 * 60,
   });
 
   return postWithComputed;
 });
 
 
+/**
+ * Fetches content (posts or drafts) scoped to the user's role:
+ *
+ * - ORG_ADMIN / EDITOR  → all content belonging to their organization
+ * - WRITER              → only their own content
+ *
+ * Pass `organizationId` for org-scoped roles.  When it is absent (e.g. the
+ * user has no org yet) the function falls back to author-only filtering so
+ * nothing breaks.
+ */
 export const getUserContent = cache(async (
   userId: string,
   page = 1,
   limit = 10,
-  status: 'draft' | 'published' = 'published',
-  query: string = ''
+  status: "draft" | "published" = "published",
+  query: string = "",
+  userRole?: UserRole | null,
+  organizationId?: string | null,
 ) => {
   const skip = (page - 1) * limit;
 
-  const commonWhere = {
-    authorId: userId,
-    ...(query && {
-      title: {
-        contains: query,
-        mode: "insensitive",
-      },
-    }),
-  };
+  // ORG_ADMIN and EDITOR see everything in their org.
+  // WRITER (or unknown role) sees only their own content.
+  const isOrgWideRole =
+    organizationId &&
+    (userRole === UserRole.ORG_ADMIN || userRole === UserRole.EDITOR);
 
-  if (status === 'published') {
+  const scopeFilter = isOrgWideRole
+    ? { organizationId }          // entire org
+    : { authorId: userId };       // own content only
+
+  const searchFilter = query
+    ? { title: { contains: query, mode: "insensitive" as const } }
+    : {};
+
+  const where = { ...scopeFilter, ...searchFilter };
+
+  if (status === "published") {
     const [posts, total] = await db.$transaction([
       db.post.findMany({
-        where: commonWhere,
+        where,
         include: {
           author: {
             select: {
@@ -210,6 +219,7 @@ export const getUserContent = cache(async (
             },
           },
           category: true,
+          tags: true,
           _count: {
             select: {
               comments: true,
@@ -218,9 +228,10 @@ export const getUserContent = cache(async (
           },
         },
         orderBy: { publishedAt: "desc" },
-        skip, take: limit,
+        skip,
+        take: limit,
       }),
-      db.post.count({ where: commonWhere }),
+      db.post.count({ where }),
     ]);
 
     return {
@@ -232,10 +243,11 @@ export const getUserContent = cache(async (
         pages: Math.ceil(total / limit),
       },
     };
-  } else { // status === 'draft'
+  } else {
+    // drafts
     const [drafts, total] = await db.$transaction([
       db.draft.findMany({
-        where: commonWhere,
+        where,
         include: {
           author: {
             select: {
@@ -245,11 +257,13 @@ export const getUserContent = cache(async (
             },
           },
           category: true,
+          tags: true,
         },
         orderBy: { updatedAt: "desc" },
-        skip, take: limit,
+        skip,
+        take: limit,
       }),
-      db.draft.count({ where: commonWhere }),
+      db.draft.count({ where }),
     ]);
 
     return {
@@ -267,11 +281,11 @@ export const getUserContent = cache(async (
 
 export const getRelatedPosts = cache(async (postId: string, categoryId?: string | null) => {
   const query: any = {
-    id: { not: postId }
-  }
+    id: { not: postId },
+  };
 
   if (categoryId) {
-    query.categoryId = categoryId
+    query.categoryId = categoryId;
   }
 
   const posts = await db.post.findMany({
@@ -290,34 +304,31 @@ export const getRelatedPosts = cache(async (postId: string, categoryId?: string 
       publishedAt: "desc",
     },
     take: 3,
-  })
+  });
 
-  return posts
-})
+  return posts;
+});
 
 export const incrementPostView = async (postId: string) => {
-  // Create a view record
   await db.postView.create({
     data: {
       post: {
         connect: { id: postId },
       },
     },
-  })
+  });
 
-  return true
-}
+  return true;
+};
 
 export const getFeaturedPosts = cache(async (limit = 6) => {
-  const { posts } = await getAllPosts({ featured: true, limit })
-  return posts
-})
+  const { posts } = await getAllPosts({ featured: true, limit });
+  return posts;
+});
 
-// FIX: Renamed and enhanced for clarity and more data
 export const getUserCommentsActivity = cache(async (userId: string, page = 1, limit = 10) => {
   const skip = (page - 1) * limit;
 
-  // Fetch comments made by the user
   const [comments, total] = await db.$transaction([
     db.comment.findMany({
       where: { userId },
@@ -325,17 +336,14 @@ export const getUserCommentsActivity = cache(async (userId: string, page = 1, li
         id: true,
         content: true,
         createdAt: true,
-        // Include the post it was on
         post: {
           select: {
             title: true,
             slug: true,
           },
         },
-        // Include the parent comment if this is a reply
         parent: {
           select: {
-            // Get the name of the user they replied to
             user: {
               select: {
                 name: true,

@@ -20,13 +20,16 @@ import {
   Webhook,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { UserRole } from "@prisma/client"; // Import the enum
+import { UserRole } from "@prisma/client";
 
 interface DashboardNavProps {
   userRole: UserRole | null;
 }
 
-// Define navigation items with logical grouping
+const ALL_ROLES = [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER];
+const ADMIN_EDITOR = [UserRole.ORG_ADMIN, UserRole.EDITOR];
+const ADMIN_ONLY = [UserRole.ORG_ADMIN];
+
 const navGroups = [
   {
     title: "Content",
@@ -35,31 +38,49 @@ const navGroups = [
         title: "Dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
-        roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
+        roles: ALL_ROLES,
       },
       {
         title: "Posts",
         href: "/dashboard/posts",
         icon: FileText,
-        roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
+        // All roles see Posts.
+        // Editors/admins see all org posts; writers see their own.
+        // That scoping is handled server-side in getUserContent.
+        roles: ALL_ROLES,
       },
       {
         title: "Comments",
-        href: "/dashboard/comments", // A dedicated editor page is cleaner
+        href: "/dashboard/comments",
         icon: MessageSquareText,
-        roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
+        roles: ALL_ROLES,
       },
       {
-        title: "Notfications",
-        href: "/dashboard/notifications", // A dedicated editor page is cleaner
+        title: "Notifications",
+        href: "/dashboard/notifications",
         icon: BellRing,
-        roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
+        roles: ALL_ROLES,
       },
       {
         title: "Categories",
-        href: "/dashboard/categories", // A dedicated editor page is cleaner
+        href: "/dashboard/categories",
         icon: LayoutList,
-        roles: [UserRole.ORG_ADMIN, UserRole.EDITOR],
+        // Writers cannot create/manage categories
+        roles: ADMIN_EDITOR,
+      },
+    ],
+  },
+  {
+    title: "Analytics",
+    items: [
+      {
+        title: "Analytics",
+        href: "/dashboard/analytics",
+        icon: BarChart3,
+        // Writers can view their own post analytics;
+        // Editors/admins see org-wide analytics.
+        // The analytics page itself should scope the data by role.
+        roles: ALL_ROLES,
       },
     ],
   },
@@ -70,66 +91,60 @@ const navGroups = [
         title: "Members",
         href: "/dashboard/members",
         icon: Users,
-        roles: [UserRole.ORG_ADMIN], // Only admins can see this
+        roles: ADMIN_ONLY,
       },
       {
         title: "Newsletters",
         href: "/dashboard/newsletters",
         icon: Newspaper,
-        roles: [UserRole.ORG_ADMIN], // Only admins can see this
-      },
-      {
-        title: "Analytics",
-        href: "/dashboard/analytics",
-        icon: BarChart3,
-        roles: [UserRole.ORG_ADMIN], // Only admins can see this
+        roles: ADMIN_ONLY,
       },
       {
         title: "Plan",
         href: "/dashboard/settings/plan",
         icon: DollarSign,
-        roles: [UserRole.ORG_ADMIN], // Only admins can see this
+        roles: ADMIN_ONLY,
       },
-       {
+      {
         title: "Org Settings",
         href: "/dashboard/settings/organization",
         icon: Building,
-        roles: [UserRole.ORG_ADMIN], // Only admins can see this
+        roles: ADMIN_ONLY,
       },
     ],
   },
   {
     title: "Developer",
     items: [
-        {
-            title: "API Keys",
-            href: "/dashboard/developer/api",
-            icon: Key,
-            roles: [UserRole.ORG_ADMIN],
-        },
-        {
-            title: "Webhooks",
-            href: "/dashboard/developer/webhooks",
-            icon: Webhook,
-            roles: [UserRole.ORG_ADMIN],
-        },
+      {
+        title: "API Keys",
+        href: "/dashboard/developer/api",
+        icon: Key,
+        roles: ADMIN_ONLY,
+      },
+      {
+        title: "Webhooks",
+        href: "/dashboard/developer/webhooks",
+        icon: Webhook,
+        roles: ADMIN_ONLY,
+      },
     ],
   },
   {
     title: "Personal",
     items: [
-        {
-            title: "Bookmarks",
-            href: "/dashboard/bookmarks",
-            icon: Bookmark,
-            roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
-        },
-        {
-            title: "Profile Settings",
-            href: "/dashboard/settings/profile",
-            icon: Settings,
-            roles: [UserRole.ORG_ADMIN, UserRole.EDITOR, UserRole.WRITER],
-        },
+      {
+        title: "Bookmarks",
+        href: "/dashboard/bookmarks",
+        icon: Bookmark,
+        roles: ALL_ROLES,
+      },
+      {
+        title: "Profile Settings",
+        href: "/dashboard/settings/profile",
+        icon: Settings,
+        roles: ALL_ROLES,
+      },
     ],
   },
 ];
@@ -138,18 +153,16 @@ export function DashboardNav({ userRole }: DashboardNavProps) {
   const pathname = usePathname();
 
   if (!userRole) {
-    return null; // Don't render nav if role is not determined
+    return null;
   }
 
   return (
     <nav className="flex flex-col gap-4 p-4 text-sm font-medium">
       {navGroups.map((group) => {
-        // Filter items based on the user's role
         const accessibleItems = group.items.filter((item) =>
           item.roles.includes(userRole)
         );
 
-        // Don't render the group if the user has no accessible items in it
         if (accessibleItems.length === 0) {
           return null;
         }
