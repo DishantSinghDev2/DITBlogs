@@ -27,8 +27,7 @@ export default function OnboardingFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { data: session, update } = useSession();
-  const hasExistingOrgs = (session?.user?.organizations?.length ?? 0) > 0;
+  const { update } = useSession();
 
   const [view, setView] = useState<OnboardingView | null>('loading');
   const [isLoading, setIsLoading] = useState(false);
@@ -38,22 +37,24 @@ export default function OnboardingFlow() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [selectedOrg, setSelectedOrg] = useState("");
   const [invitations, setInvitations] = useState<any[]>([]);
-
-
+  const [hasExistingOrgs, setHasExistingOrgs] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [orgResponse, inviteResponse] = await Promise.all([
+        const [orgResponse, inviteResponse, myOrgsResponse] = await Promise.all([
           fetch("/api/organizations"),
           fetch('/api/user/invitations'),
+          fetch('/api/user/organizations'),
         ]);
 
         const orgs = await orgResponse.json();
         const invites = await inviteResponse.json();
+        const myOrgs = myOrgsResponse.ok ? await myOrgsResponse.json() : [];
 
         setOrganizations(orgs);
         setInvitations(invites);
+        setHasExistingOrgs(Array.isArray(myOrgs) && myOrgs.length > 0);
 
         // Logic to determine the initial view
         const stepParam = searchParams.get('step');
