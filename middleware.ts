@@ -18,28 +18,24 @@ export default withAuth(
     if (isAuthenticated) {
       const { onboardingCompleted, membershipStatus } = token;
 
-      // State 1: User is fully onboarded and has an active membership.
-      // They should be able to access the app but not the onboarding/rejected pages.
-      // Treat a populated organizationId as proof of onboarding too (belt + suspenders).
+      // Redirect fully-onboarded users away from /onboarding and /rejected.
+      // Use token.organizationId as a belt-and-suspenders fallback in case
+      // onboardingCompleted wasn't written to the JWT yet.
       if (onboardingCompleted || token.organizationId) {
         if (pathname === "/onboarding" || pathname === "/rejected") {
           return NextResponse.redirect(dashboardUrl);
         }
       }
-      // State 2: User's request to join was rejected.
-      // They should be locked to the /rejected page.
-      else if (membershipStatus === 'REJECTED') {
-        if (pathname !== '/rejected') {
-          return NextResponse.redirect(new URL("/rejected", req.url));
-        }
+
+      // Lock rejected users to the /rejected page.
+      if (membershipStatus === "REJECTED" && pathname !== "/rejected") {
+        return NextResponse.redirect(new URL("/rejected", req.url));
       }
-      // State 3: User is authenticated but NOT onboarded yet.
-      // They should be locked to the /onboarding page.
-      else {
-        if (pathname !== "/onboarding") {
-          return NextResponse.redirect(new URL("/onboarding", req.url));
-        }
-      }
+
+      // Do NOT redirect to /onboarding here. The middleware only reads a
+      // cached JWT cookie and can't distinguish a genuinely un-onboarded user
+      // from one whose cookie is stale. The dashboard layout does a live DB
+      // check and handles the redirect to /onboarding correctly.
     }
 
     // If none of the above conditions for an authenticated user are met,
