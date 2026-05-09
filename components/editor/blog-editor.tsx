@@ -536,17 +536,31 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
     fetchCategories();
   }, []);
 
+  const addTags = (incoming: string[]) => {
+    const cleaned = incoming
+      .map((t) => t.trim().toLowerCase())
+      .filter((t) => t && !tags.includes(t));
+    if (!cleaned.length) return;
+    const newTags = [...tags, ...cleaned].slice(0, planLimits.tagsPerPost);
+    setTags(newTags);
+    form.setValue('tags', newTags, { shouldDirty: true, shouldValidate: true });
+  };
+
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault();
-      const newTag = tagInput.trim();
-      if (newTag && !tags.includes(newTag) && tags.length < planLimits.tagsPerPost) {
-        const newTags = [...tags, newTag];
-        setTags(newTags);
-        form.setValue('tags', newTags, { shouldDirty: true, shouldValidate: true });
-      }
+      addTags([tagInput]);
       setTagInput("");
     }
+  };
+
+  const handleTagPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text");
+    if (!pasted.includes(",")) return; // let normal paste handle single tags
+    e.preventDefault();
+    const parts = pasted.split(",");
+    addTags(parts);
+    setTagInput("");
   };
 
   const removeTag = (tagToRemove: string) => {
@@ -938,10 +952,11 @@ export function BlogEditor({ organizationId, post, drafts, organizationPlan }: {
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={handleTagKeyDown}
+                  onPaste={handleTagPaste}
                   disabled={tags.length >= planLimits.tagsPerPost}
                 />
               </div>
-              <FormDescription>Add up to {planLimits.tagsPerPost} tags. Press Enter or comma to add.</FormDescription>
+              <FormDescription>Add up to {planLimits.tagsPerPost} tags. Press Enter or comma to add, or paste a comma-separated list.</FormDescription>
             </FormItem>
           </div>
           <Separator />
