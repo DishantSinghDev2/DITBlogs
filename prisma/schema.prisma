@@ -72,6 +72,7 @@ model User {
   updatedAt           DateTime         @updatedAt
   role                UserRole?
   membershipStatus    MembershipStatus @default(PENDING)
+  sessionVersion      Int              @default(1)
 
   organizationId String?
   organization   Organization? @relation("OrganizationMembers", fields: [organizationId], references: [id], onDelete: SetNull)

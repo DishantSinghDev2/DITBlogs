@@ -16,6 +16,7 @@ declare module "next-auth" {
       image: string;
       organizationId: string;
       plan: string;
+      sessionVersion: number;
       organizations: Array<{
         id: string;
         name: string;
@@ -33,6 +34,7 @@ declare module "next-auth/jwt" {
     organizationId?: string;
     plan?: string;
     membershipStatus?: string;
+    sessionVersion?: number;
     organizations?: Array<{
       id: string;
       name: string;
@@ -98,8 +100,10 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user, trigger, session: sessionUpdate }) {
-      // Manual session update (e.g. org switch)
-      if (trigger === "update" && sessionUpdate) {
+      // Manual session update with explicit payload (e.g. org switch).
+      // An empty update() call (no args → sessionUpdate is undefined/null) falls
+      // through so the DB re-fetch below runs and refreshes the full token.
+      if (trigger === "update" && sessionUpdate && Object.keys(sessionUpdate).length > 0) {
         return { ...token, ...sessionUpdate };
       }
 
@@ -146,6 +150,7 @@ export const authOptions: NextAuthOptions = {
           membershipStatus: dbUser.membershipStatus,
           plan: dbUser.organization?.plan,
           organizationId: dbUser.organizationId,
+          sessionVersion: dbUser.sessionVersion,
           organizations: dbUser.userOrganizations.map((uo) => ({
             id: uo.organizationId,
             name: uo.organization.name,
@@ -170,6 +175,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string;
         session.user.plan = token.plan as string;
         session.user.organizationId = token.organizationId as string;
+        session.user.sessionVersion = (token.sessionVersion as number) ?? 1;
         session.user.organizations = (token.organizations as any) ?? [];
       }
       return session;

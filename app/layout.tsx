@@ -7,6 +7,7 @@ import NextTopLoader from 'nextjs-toploader';
 import { Analytics } from "@/components/analytics"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/providers/auth-provider"
+import { SessionSync } from "@/components/session-sync"
 import { SiteHeader } from "@/components/site-header"
 import { SiteFooter } from "@/components/site-footer"
 import { Toaster } from "@/components/ui/toaster"
@@ -112,6 +113,7 @@ export default function RootLayout({
               speed={200}
               shadow="0 0 10px #1faaff,0 0 5px #1faaff"
             />
+            <SessionSync />
             <div className="relative flex min-h-screen flex-col max-w-[100vw] mx-auto">
               <SiteHeader />
               <Suspense>

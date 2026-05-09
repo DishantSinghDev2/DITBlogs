@@ -32,11 +32,13 @@ export async function PUT(
       return new NextResponse("Admins cannot change their own role.", { status: 403 })
     }
 
-    // Update both User (active org) and UserOrganization
+    // Update both User (active org) and UserOrganization.
+    // Incrementing sessionVersion signals the member's client to refresh its
+    // JWT immediately via the /api/auth/session-version polling endpoint.
     const [updatedUser] = await db.$transaction([
       db.user.update({
         where: { id: memberId, organizationId: admin.organizationId },
-        data: { role },
+        data: { role, sessionVersion: { increment: 1 } },
       }),
       db.userOrganization.updateMany({
         where: { userId: memberId, organizationId: admin.organizationId },
