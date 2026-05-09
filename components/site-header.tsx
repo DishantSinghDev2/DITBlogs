@@ -10,6 +10,7 @@ import {
   Check, PlusCircle,
 } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
+import { CreateOrgModal } from "@/components/dashboard/create-org-modal"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -38,6 +39,7 @@ export function SiteHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSwitching, setIsSwitching] = useState(false)
+  const [createOrgOpen, setCreateOrgOpen] = useState(false)
   const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; role: string; plan: string; isActive?: boolean }>>(
     session?.user?.organizations ?? []
   )
@@ -228,11 +230,9 @@ export function SiteHeader() {
                           </DropdownMenuItem>
                         ))}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href="/dashboard/organizations/new">
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            <span>Create new org</span>
-                          </Link>
+                        <DropdownMenuItem onClick={() => setCreateOrgOpen(true)} className="cursor-pointer">
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          <span>Create new org</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link href="/dashboard/organizations/join">
@@ -329,6 +329,8 @@ export function SiteHeader() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CreateOrgModal open={createOrgOpen} onClose={() => setCreateOrgOpen(false)} />
     </header>
   )
 }
