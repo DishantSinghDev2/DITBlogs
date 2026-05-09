@@ -1,15 +1,14 @@
 import type { NextAuthOptions } from "next-auth"
 import NextAuth from "next-auth/next"
+import GoogleProvider from "next-auth/providers/google"
+import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { db } from "@/lib/db"
-import { UserProfile } from "@/types" // Assuming your UserProfile type is here
-import { JWT } from "next-auth/jwt"
-import { Plan } from "@prisma/client"
+import bcrypt from "bcryptjs"
 
 declare module "next-auth" {
   interface Session {
-    accessToken?: string;
-    user: UserProfile & {
+    user: {
       id: string;
       name: string;
       email: string;
@@ -18,54 +17,30 @@ declare module "next-auth" {
       onboardingCompleted: boolean;
       organizationId: string;
       plan: string;
+      organizations: Array<{
+        id: string;
+        name: string;
+        role: string;
+        plan: string;
+      }>;
     };
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    accessToken?: string;
-    refreshToken?: string;
-    accessTokenExpires?: number;
-    user?: UserProfile & { id: string };
-  }
-}
-
-
-// This function is for REFRESHING the token. Your implementation is correct.
-async function refreshAccessToken(token: JWT) {
-  try {
-    const response = await fetch("https://whatsyour.info/api/v1/oauth/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        client_id: process.env.WYI_CLIENT_ID,
-        client_secret: process.env.WYI_CLIENT_SECRET,
-        grant_type: "refresh_token",
-        refresh_token: token.refreshToken,
-      }),
-    });
-
-    const refreshedTokens = await response.json();
-
-    if (!response.ok) {
-      throw refreshedTokens;
-    }
-
-    return {
-      ...token,
-      accessToken: refreshedTokens.access_token,
-      accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
-      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken, // Keep old RT if new one isn't sent
-    };
-  } catch (error) {
-    console.error("Error refreshing access token", error);
-    return {
-      ...token,
-      error: "RefreshAccessTokenError",
-    };
+    id?: string;
+    role?: string;
+    onboardingCompleted?: boolean;
+    organizationId?: string;
+    plan?: string;
+    membershipStatus?: string;
+    organizations?: Array<{
+      id: string;
+      name: string;
+      role: string;
+      plan: string;
+    }>;
   }
 }
 
@@ -76,93 +51,88 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/login",
-    error: '/auth/login',
+    error: "/auth/login",
   },
   providers: [
-    {
-      id: "wyi",
-      name: "WhatsYourInfo",
-      type: "oauth",
-      authorization: {
-        url: "https://whatsyour.info/oauth/authorize",
-        params: { scope: "profile:read email:read" },
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    CredentialsProvider({
+      name: "credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
-      // This is the user info endpoint, it's correct.
-      userinfo: "https://whatsyour.info/api/v1/me",
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
 
-      // --- START OF THE FIX ---
-      // We are now defining a custom handler for the token endpoint communication.
-      token: {
-        url: "https://whatsyour.info/api/v1/oauth/token",
-        async request(context) {
-          const response = await fetch("https://whatsyour.info/api/v1/oauth/token", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              grant_type: "authorization_code",
-              code: context.params.code,
-              redirect_uri: context.provider.callbackUrl,
-              client_id: context.provider.clientId,
-              client_secret: context.provider.clientSecret,
-            }),
-          });
+        const user = await db.user.findUnique({
+          where: { email: credentials.email },
+        });
 
-          const tokens = await response.json();
-          if (!response.ok) {
-            throw new Error(tokens.error_description || "Token request failed");
-          }
-          return { tokens };
-        },
-      },
-      // --- END OF THE FIX ---
+        if (!user || !user.password) return null;
 
-      clientId: process.env.WYI_CLIENT_ID,
-      clientSecret: process.env.WYI_CLIENT_SECRET,
-      async profile(profile: UserProfile, tokens) {
+        const passwordMatch = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+
+        if (!passwordMatch) return null;
+
         return {
-          id: profile._id, // Map _id from API to id for the adapter
-          name: `${profile.firstName} ${profile.lastName}`, // Combine first and last name
-          email: profile.email,
-          image: `https://whatsyour.info/api/v1/avatar/${profile.username}`, // Map avatar from API to image for the adapter
-          emailVerified: profile.emailVerified,
-          bio: profile.bio,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
         };
       },
-    },
+    }),
   ],
 
   callbacks: {
-    async jwt({ token, user }) {
-      // On initial sign in, find the user in the database to get their role
+    async jwt({ token, user, trigger, session: sessionUpdate }) {
+      // Handle manual session update (e.g. org switch)
+      if (trigger === "update" && sessionUpdate) {
+        return { ...token, ...sessionUpdate };
+      }
+
       const dbUser = await db.user.findFirst({
-        where: {
-          email: token.email,
-        },
+        where: { email: token.email! },
         include: {
-          organization: true
-        }
+          organization: { select: { plan: true } },
+          userOrganizations: {
+            where: { membershipStatus: "APPROVED" },
+            include: {
+              organization: {
+                select: { id: true, name: true, plan: true },
+              },
+            },
+          },
+        },
       });
 
       if (!dbUser) {
-        if (user) {
-          token.id = user.id;
-        }
+        if (user) token.id = user.id;
         return token;
       }
 
-      // This is the line that makes your middleware work!
-      // It adds the user's role from the database to the JWT.
       return {
         id: dbUser.id,
         name: dbUser.name,
         email: dbUser.email,
         picture: dbUser.image,
-        role: dbUser.role, // <-- THIS IS THE KEY
-        onboardingCompleted: dbUser?.onboardingCompleted || false,
+        role: dbUser.role,
+        onboardingCompleted: dbUser.onboardingCompleted ?? false,
+        membershipStatus: dbUser.membershipStatus,
         plan: dbUser.organization?.plan,
-        organizationId: dbUser.organizationId
+        organizationId: dbUser.organizationId,
+        organizations: dbUser.userOrganizations.map((uo) => ({
+          id: uo.organizationId,
+          name: uo.organization.name,
+          role: uo.role,
+          plan: uo.organization.plan,
+        })),
       };
     },
 
@@ -172,23 +142,26 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name as string;
         session.user.email = token.email as string;
         session.user.image = token.picture as string;
-        session.user.role = token.role as string; // Also passing it to the client-side session
+        session.user.role = token.role as string;
         session.user.onboardingCompleted = token.onboardingCompleted as boolean;
         session.user.plan = token.plan as string;
         session.user.organizationId = token.organizationId as string;
+        session.user.organizations = (token.organizations as any) ?? [];
       }
       return session;
     },
   },
+
   cookies: {
     sessionToken: {
       name: `__Secure-next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
+        sameSite: "lax",
+        path: "/",
         secure: process.env.NODE_ENV === "production",
-        domain: ".dishis.tech", // Must match DITMail's setting
+        domain:
+          process.env.NODE_ENV === "production" ? ".dishis.tech" : undefined,
       },
     },
   },

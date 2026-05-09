@@ -122,7 +122,7 @@ export default function DITBlogsPricingPage() {
                                             <Button
                                                 className="w-full"
                                                 disabled={!!isLoading}
-                                                onClick={() => router.push('https://whatsyour.info/pricing/ditblogs')}
+                                                onClick={() => router.push('/contact?subject=Upgrade Plan')}
                                             >
                                                 {isLoading === plan.id ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : null}
                                                 Choose {plan.name}

@@ -5,8 +5,7 @@ import slugify from "slugify";
 
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { db } from "@/lib/db";
-import { redis } from "@/lib/redis";
-// FIX: Use the correct, context-aware permission checker
+import { invalidateAllPostsCache } from "@/lib/cache";
 import { canUserPerformAction } from "@/lib/api/user";
 
 
@@ -130,7 +129,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await redis.del("featured_posts");
+    await invalidateAllPostsCache();
     return NextResponse.json(post, { status: 201 });
 
   } catch (error) {

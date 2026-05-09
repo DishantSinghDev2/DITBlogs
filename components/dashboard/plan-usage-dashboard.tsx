@@ -65,11 +65,10 @@ export function PlanUsageDashboard({ organization }: PlanUsageProps) {
                         <CardDescription>Unlock more features and increase your limits by upgrading your plan.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow">
-                        <p className="text-sm text-muted-foreground">All payments and subscriptions are securely managed by our partner, WhatsYour.Info.</p>
+                        <p className="text-sm text-muted-foreground">Upgrade your plan to unlock higher limits for your organization.</p>
                     </CardContent>
                     <CardFooter>
-                        {/* This link should go to your WYI payment/subscription management page */}
-                        <Button asChild className="w-full"><Link href="https://whatsyour.info/billing" target="_blank">Manage Subscription <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+                        <Button asChild className="w-full"><Link href="/contact">Contact us to upgrade <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
                     </CardFooter>
                 </Card>
 

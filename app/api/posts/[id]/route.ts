@@ -1,11 +1,10 @@
 import { db } from "@/lib/db";
-import { redis } from "@/lib/redis";
+import { invalidatePostCache, invalidateAllPostsCache } from "@/lib/cache";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { canUserPerformAction } from "@/lib/api/user"; // Correct permission checker
+import { canUserPerformAction } from "@/lib/api/user";
 
-// --- GET handler for fetching a single post by ID ---
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -29,7 +28,7 @@ export async function GET(
     const post = await db.post.findFirst({
       where: {
         id: postId,
-        organizationId: user.organizationId, // Security: Scope to user's org
+        organizationId: user.organizationId,
       },
       include: {
         author: { select: { id: true, name: true, image: true } },
@@ -50,7 +49,6 @@ export async function GET(
   }
 }
 
-// --- PUT handler for updating an existing post ---
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -69,7 +67,6 @@ export async function PUT(
     }
 
     const body = await req.json();
-    // Prevent changing critical, immutable fields on update
     const { authorId, organizationId, ...updateData } = body;
 
     const updatedPost = await db.post.update({
@@ -77,9 +74,7 @@ export async function PUT(
       data: updateData,
     });
 
-    // Invalidate caches
-    await redis.del(`post:${updatedPost.slug}`);
-    await redis.del("featured_posts");
+    await invalidatePostCache(updatedPost.slug);
 
     return NextResponse.json(updatedPost);
   } catch (error) {
@@ -88,7 +83,6 @@ export async function PUT(
   }
 }
 
-// --- DELETE handler for deleting an existing post ---
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -106,7 +100,6 @@ export async function DELETE(
       return new NextResponse("Forbidden: You do not have permission to delete this post.", { status: 403 });
     }
 
-    // We must fetch the post first to get its slug for cache invalidation
     const postToDelete = await db.post.findUnique({
       where: { id: postId },
       select: { slug: true },
@@ -116,14 +109,9 @@ export async function DELETE(
       return new NextResponse("Post not found", { status: 404 });
     }
 
-    // Now, delete the post
-    await db.post.delete({
-      where: { id: postId },
-    });
+    await db.post.delete({ where: { id: postId } });
 
-    // Invalidate caches using the fetched slug
-    await redis.del(`post:${postToDelete.slug}`);
-    await redis.del("featured_posts");
+    await invalidatePostCache(postToDelete.slug);
 
     return NextResponse.json({ message: "Post deleted successfully" });
   } catch (error) {

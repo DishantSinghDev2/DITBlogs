@@ -296,29 +296,20 @@ export function UserSettings({ user }: UserSettingsProps) {
             <div className="space-y-2">
               <h3 className="font-medium">Email Address</h3>
               <p className="text-sm text-muted-foreground">{user.email}</p>
-              <p className="text-sm text-muted-foreground">{user.emailVerified ? "Verified" : "Not verified"}</p>
-              <Button variant="outline" size="sm">
-                <a target="_blank" href="https://whatsyour.info/settings">
-                  Verify on WYI
-                </a>
-              </Button>
+              <p className="text-sm text-muted-foreground">{user.emailVerified ? "Verified" : "Not verified — check your inbox."}</p>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium">Password</h3>
-              <p className="text-sm text-muted-foreground">Passwords are managed by WhatsYour.Info.</p>
-              <Button variant="outline" size="sm">
-                <a target="_blank" href="https://whatsyour.info/settings">
-                  WYI Settings
-                </a>
+              <p className="text-sm text-muted-foreground">Change your password from your account settings.</p>
+              <Button variant="outline" size="sm" asChild>
+                <a href="/dashboard/settings/password">Change password</a>
               </Button>
             </div>
             <div className="space-y-2">
               <h3 className="font-medium text-destructive">Danger Zone</h3>
-              <p className="text-sm text-muted-foreground">To delete this account please visit WhatsYour.Info - Profile - Account Settings.</p>
-              <Button variant="outline" size="sm">
-                <a target="_blank" href="https://whatsyour.info/profile">
-                  WYI Profile
-                </a>
+              <p className="text-sm text-muted-foreground">To delete your account, please contact support.</p>
+              <Button variant="outline" size="sm" asChild>
+                <a href="/contact">Contact support</a>
               </Button>
             </div>
           </CardContent>

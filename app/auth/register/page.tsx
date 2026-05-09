@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { signIn, useSession } from "next-auth/react"
-import { Loader2, Mail, Lock } from "lucide-react"
+import { Loader2, User, Mail, Lock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,32 +14,23 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { status } = useSession()
 
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const errorParam = searchParams.get("error")
 
   useEffect(() => {
     if (status === "authenticated") {
       router.push("/dashboard")
     }
   }, [status, router])
-
-  useEffect(() => {
-    if (errorParam === "OAuthAccountNotLinked") {
-      setError("This email is already registered with a different sign-in method.")
-    } else if (errorParam) {
-      setError("Sign in failed. Please try again.")
-    }
-  }, [errorParam])
 
   if (status === "loading" || status === "authenticated") {
     return (
@@ -49,29 +40,59 @@ export default function LoginPage() {
     )
   }
 
-  async function handleCredentialsLogin(e: React.FormEvent) {
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
-    setIsLoading(true)
     setError(null)
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    })
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.")
+      return
+    }
 
-    if (result?.error) {
-      setError("Invalid email or password.")
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.")
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error ?? "Registration failed. Please try again.")
+        return
+      }
+
+      // Auto sign-in after registration
+      const signInResult = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      })
+
+      if (signInResult?.error) {
+        router.push("/auth/login")
+      } else {
+        router.push("/onboarding")
+      }
+    } catch {
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
       setIsLoading(false)
-    } else {
-      router.push("/dashboard")
     }
   }
 
   async function handleGoogleLogin() {
     setIsGoogleLoading(true)
     setError(null)
-    await signIn("google", { callbackUrl: "/dashboard" })
+    await signIn("google", { callbackUrl: "/onboarding" })
   }
 
   return (
@@ -81,8 +102,8 @@ export default function LoginPage() {
           <Link href="/" className="flex justify-center mb-2">
             <Image src="/logotext.png" alt="DITBlogs" width={120} height={32} className="h-8 w-auto" />
           </Link>
-          <CardTitle className="text-2xl font-semibold">Welcome back</CardTitle>
-          <CardDescription>Sign in to your account to continue.</CardDescription>
+          <CardTitle className="text-2xl font-semibold">Create an account</CardTitle>
+          <CardDescription>Join DITBlogs to start publishing.</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -117,11 +138,28 @@ export default function LoginPage() {
               <Separator />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with email</span>
+              <span className="bg-background px-2 text-muted-foreground">Or register with email</span>
             </div>
           </div>
 
-          <form onSubmit={handleCredentialsLogin} className="space-y-4">
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Your Name"
+                  className="pl-9"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  autoComplete="name"
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
@@ -140,36 +178,52 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-              </div>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="Min. 8 characters"
                   className="pl-9"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  autoComplete="current-password"
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Repeat your password"
+                  className="pl-9"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
                 />
               </div>
             </div>
 
             <Button type="submit" className="w-full" size="lg" disabled={isLoading || isGoogleLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? "Creating account..." : "Create account"}
             </Button>
           </form>
         </CardContent>
 
         <CardFooter className="flex flex-col gap-2 text-center">
           <p className="text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/auth/register" className="font-medium text-primary hover:underline">
-              Create one
+            Already have an account?{" "}
+            <Link href="/auth/login" className="font-medium text-primary hover:underline">
+              Sign in
             </Link>
           </p>
           <p className="text-xs text-muted-foreground">
