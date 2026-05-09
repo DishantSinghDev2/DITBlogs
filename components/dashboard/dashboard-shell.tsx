@@ -3,11 +3,11 @@
 import { useState, type ReactNode } from "react";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 import { CreateOrgModal } from "@/components/dashboard/create-org-modal";
-import { PenTool, Sidebar as SidebarIcon, X } from "lucide-react";
+import { Sidebar as SidebarIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type UserRole } from "@prisma/client";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
+import { CreatePostButton } from "@/components/dashboard/create-post-button"
 import { SiteFooter } from "../site-footer";
 
 export function DashboardShell({
@@ -34,13 +34,8 @@ export function DashboardShell({
       {/* This is fixed on the left for medium screens and up */}
       <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 md:top-16">
         <div className="flex h-full max-h-screen flex-col border-r bg-background">
-          <div className="p-4 ">
-            <Link href={"/dashboard/editor"}>
-              <Button className="w-full">
-                <PenTool className="w-4 h-4" />
-                Create Post
-              </Button>
-            </Link>
+          <div className="p-4">
+            <CreatePostButton fullWidth />
           </div>
           <div className="flex-1 overflow-y-auto scrollable">
             <DashboardNav userRole={userRole} />
@@ -92,12 +87,7 @@ export function DashboardShell({
               className="fixed inset-y-0 top-16 left-0 z-50 flex h-full w-64 flex-col border-r bg-background md:hidden"
             >
               <div className="p-2 flex gap-2 w-full">
-                <Link className="w-full" href={"/dashboard/editor"}>
-                  <Button className="w-full">
-                    <PenTool className="w-4 h-4" />
-                    Create Post
-                  </Button>
-                </Link>
+                <CreatePostButton fullWidth />
                 <Button
                   variant="outline"
                   size="icon"
