@@ -38,7 +38,7 @@ export function SiteHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSwitching, setIsSwitching] = useState(false)
-  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; role: string; plan: string }>>(
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; role: string; plan: string; isActive?: boolean }>>(
     session?.user?.organizations ?? []
   )
 
@@ -69,8 +69,10 @@ export function SiteHeader() {
     ? session.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U"
 
-  const activeOrgId = session?.user?.organizationId
-  const activeOrg = organizations.find((o: any) => o.id === activeOrgId)
+  // Derive active org from live API data; fall back to session while loading
+  const activeOrg = organizations.find((o: any) => o.isActive) ?? organizations.find((o: any) => o.id === session?.user?.organizationId)
+  const activeOrgId = activeOrg?.id ?? session?.user?.organizationId
+  const hasOrg = organizations.length > 0 || !!session?.user?.organizationId
 
   async function handleSwitchOrg(orgId: string) {
     if (orgId === activeOrgId || isSwitching) return
@@ -172,7 +174,7 @@ export function SiteHeader() {
                 <DropdownMenuSeparator />
 
                 {/* Navigation links */}
-                {session.user.organizationId ? (
+                {hasOrg ? (
                   <>
                     <DropdownMenuItem asChild>
                       <Link href="/dashboard">
@@ -202,7 +204,7 @@ export function SiteHeader() {
                   </DropdownMenuItem>
                 )}
 
-                {session.user.role === "ORG_ADMIN" && (
+                {(activeOrg?.role === "ORG_ADMIN" || session.user.role === "ORG_ADMIN") && (
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard/members">
                       <User className="mr-2 h-4 w-4" />

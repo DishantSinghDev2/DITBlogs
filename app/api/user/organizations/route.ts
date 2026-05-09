@@ -10,18 +10,22 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const memberships = await db.userOrganization.findMany({
-      where: {
-        userId: session.user.id,
-        membershipStatus: "APPROVED",
-      },
-      include: {
-        organization: {
-          select: { id: true, name: true, website: true, plan: true },
+    // Read activeOrgId from DB — session.user.organizationId may be stale
+    const [dbUser, memberships] = await Promise.all([
+      db.user.findUnique({
+        where: { id: session.user.id },
+        select: { organizationId: true },
+      }),
+      db.userOrganization.findMany({
+        where: { userId: session.user.id, membershipStatus: "APPROVED" },
+        include: {
+          organization: { select: { id: true, name: true, website: true, plan: true } },
         },
-      },
-      orderBy: { joinedAt: "asc" },
-    })
+        orderBy: { joinedAt: "asc" },
+      }),
+    ])
+
+    const activeOrgId = dbUser?.organizationId
 
     return NextResponse.json(
       memberships.map((m) => ({
@@ -31,7 +35,7 @@ export async function GET() {
         plan: m.organization.plan,
         role: m.role,
         joinedAt: m.joinedAt,
-        isActive: m.organizationId === session.user.organizationId,
+        isActive: m.organizationId === activeOrgId,
       }))
     )
   } catch (error) {
