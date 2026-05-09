@@ -57,9 +57,8 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      // Allows signing in with Google even when the email already exists
-      // via a different provider (e.g. WYI). Google verifies the email,
-      // so this is safe.
+      // Links Google sign-in to an existing account that used a different
+      // provider (e.g. WYI). Safe because Google verifies email ownership.
       allowDangerousEmailAccountLinking: true,
     }),
     CredentialsProvider({
@@ -71,73 +70,92 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await db.user.findUnique({
-          where: { email: credentials.email },
-        });
+        try {
+          const user = await db.user.findUnique({
+            where: { email: credentials.email },
+          });
 
-        if (!user || !user.password) return null;
+          if (!user?.password) return null;
 
-        const passwordMatch = await bcrypt.compare(
-          credentials.password,
-          user.password
-        );
+          const passwordMatch = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
 
-        if (!passwordMatch) return null;
+          if (!passwordMatch) return null;
 
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-        };
+          return {
+            id: user.id,
+            name: user.name ?? "",
+            email: user.email ?? "",
+            image: user.image ?? "",
+          };
+        } catch (err) {
+          console.error("[AUTH_AUTHORIZE]", err);
+          return null;
+        }
       },
     }),
   ],
 
   callbacks: {
     async jwt({ token, user, trigger, session: sessionUpdate }) {
-      // Handle manual session update (e.g. org switch)
+      // Manual session update (e.g. org switch)
       if (trigger === "update" && sessionUpdate) {
         return { ...token, ...sessionUpdate };
       }
 
-      const dbUser = await db.user.findFirst({
-        where: { email: token.email! },
-        include: {
-          organization: { select: { plan: true } },
-          userOrganizations: {
-            where: { membershipStatus: "APPROVED" },
-            include: {
-              organization: {
-                select: { id: true, name: true, plan: true },
-              },
-            },
-          },
-        },
-      });
-
-      if (!dbUser) {
+      // token.email is set by NextAuth from the user object on first sign-in
+      const email = token.email ?? (user as any)?.email;
+      if (!email) {
         if (user) token.id = user.id;
         return token;
       }
 
-      return {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        picture: dbUser.image,
-        role: dbUser.role,
-        onboardingCompleted: dbUser.onboardingCompleted ?? false,
-        membershipStatus: dbUser.membershipStatus,
-        plan: dbUser.organization?.plan,
-        organizationId: dbUser.organizationId,
-        organizations: dbUser.userOrganizations.map((uo) => ({
-          id: uo.organizationId,
-          name: uo.organization.name,
-          role: uo.role,
-          plan: uo.organization.plan,
-        })),
-      };
+      try {
+        const dbUser = await db.user.findFirst({
+          where: { email },
+          include: {
+            organization: { select: { plan: true } },
+            userOrganizations: {
+              where: { membershipStatus: "APPROVED" },
+              include: {
+                organization: {
+                  select: { id: true, name: true, plan: true },
+                },
+              },
+            },
+          },
+        });
+
+        if (!dbUser) {
+          if (user) token.id = user.id;
+          return token;
+        }
+
+        return {
+          id: dbUser.id,
+          name: dbUser.name,
+          email: dbUser.email,
+          picture: dbUser.image,
+          role: dbUser.role,
+          onboardingCompleted: dbUser.onboardingCompleted ?? false,
+          membershipStatus: dbUser.membershipStatus,
+          plan: dbUser.organization?.plan,
+          organizationId: dbUser.organizationId,
+          organizations: dbUser.userOrganizations.map((uo) => ({
+            id: uo.organizationId,
+            name: uo.organization.name,
+            role: uo.role,
+            plan: uo.organization.plan,
+          })),
+        };
+      } catch (err) {
+        console.error("[AUTH_JWT]", err);
+        // Return token as-is so the session doesn't hard-crash
+        if (user) token.id = user.id;
+        return token;
+      }
     },
 
     async session({ token, session }) {
@@ -155,20 +173,9 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-
-  cookies: {
-    sessionToken: {
-      name: `__Secure-next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-        domain:
-          process.env.NODE_ENV === "production" ? ".dishis.tech" : undefined,
-      },
-    },
-  },
+  // No custom cookie config — use NextAuth defaults.
+  // The old __Secure- / .dishis.tech config was for WYI cross-domain sharing
+  // and breaks standard credentials auth.
 };
 
 const handler = NextAuth(authOptions);
