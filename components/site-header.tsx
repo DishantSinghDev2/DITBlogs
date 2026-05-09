@@ -38,12 +38,24 @@ export function SiteHeader() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isSwitching, setIsSwitching] = useState(false)
+  const [organizations, setOrganizations] = useState<Array<{ id: string; name: string; role: string; plan: string }>>(
+    session?.user?.organizations ?? []
+  )
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10)
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+
+  // Fetch orgs directly from the API — the JWT cookie may be stale
+  useEffect(() => {
+    if (status !== "authenticated") return
+    fetch("/api/user/organizations")
+      .then((r) => r.ok ? r.json() : [])
+      .then(setOrganizations)
+      .catch(() => {})
+  }, [status])
 
   const navigation = [
     { name: "Home", href: "/" },
@@ -57,9 +69,8 @@ export function SiteHeader() {
     ? session.user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)
     : "U"
 
-  const organizations = session?.user?.organizations ?? []
   const activeOrgId = session?.user?.organizationId
-  const activeOrg = organizations.find((o) => o.id === activeOrgId)
+  const activeOrg = organizations.find((o: any) => o.id === activeOrgId)
 
   async function handleSwitchOrg(orgId: string) {
     if (orgId === activeOrgId || isSwitching) return
