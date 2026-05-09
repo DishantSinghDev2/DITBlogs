@@ -21,13 +21,19 @@ export default async function EditContentPage({ params }: { params: { id: string
   let contentType: 'post' | 'draft' | null = null;
 
   // 1. Determine if the ID belongs to a Post or a Draft
-  const post = await db.post.findUnique({ where: { id: contentId } });
+  const post = await db.post.findUnique({
+    where: { id: contentId },
+    include: { tags: { select: { id: true, name: true, slug: true } } },
+  });
 
   if (post) {
     contentType = 'post';
     contentData = post;
   } else {
-    const draft = await db.draft.findUnique({ where: { id: contentId } });
+    const draft = await db.draft.findUnique({
+      where: { id: contentId },
+      include: { tags: { select: { id: true, name: true, slug: true } } },
+    });
     if (draft) {
       contentType = 'draft';
       contentData = draft;
@@ -67,7 +73,11 @@ export default async function EditContentPage({ params }: { params: { id: string
         authorId: contentData.authorId,
         organizationId: contentData.organizationId,
         categoryId: contentData.categoryId,
-        postId: contentData.id, // Link this draft back to the original post
+        postId: contentData.id,
+        // Carry tags from the original post into the draft copy
+        tags: contentData.tags?.length
+          ? { connect: contentData.tags.map((t: { id: string }) => ({ id: t.id })) }
+          : undefined,
       },
     });
     // Redirect the user to the new draft's editor page.

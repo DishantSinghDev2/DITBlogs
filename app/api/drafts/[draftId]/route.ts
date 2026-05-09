@@ -17,14 +17,13 @@ export async function PUT(req: Request, { params }: { params: { draftId: string 
 
     // You can add permission checks here if needed
     const updatedDraft = await db.draft.update({
-        where: { id: draftId, authorId: session.user.id }, // Ensure user owns the draft
+        where: { id: draftId, authorId: session.user.id },
         data: {
             ...body,
             tags: {
-                set: [], // optional: clear old ones
-                connectOrCreate: (body.tags || []).map((tag) => ({
+                set: [],
+                connectOrCreate: (body.tags || []).map((tag: string) => ({
                     where: {
-                        // Unique constraint: slug + org
                         organizationId_slug: {
                             slug: tag,
                             organizationId: body.organizationId,
@@ -32,12 +31,13 @@ export async function PUT(req: Request, { params }: { params: { draftId: string 
                     },
                     create: {
                         slug: tag,
-                        name: tag, // or use a formatted name
+                        name: tag,
                         organization: { connect: { id: body.organizationId } },
                     },
                 })),
             },
-        }
+        },
+        include: { tags: { select: { id: true, name: true, slug: true } } },
     });
     return NextResponse.json(updatedDraft);
 }
