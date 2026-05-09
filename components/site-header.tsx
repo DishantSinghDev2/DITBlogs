@@ -6,8 +6,8 @@ import { usePathname, useRouter } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import {
   Menu, X, Sun, Moon, Loader2, Crown, LogOut, User,
-  Star, Settings, FileText, LayoutDashboard, Building2,
-  Check, ChevronRight, PlusCircle,
+  Settings, FileText, LayoutDashboard, Building2,
+  Check, PlusCircle,
 } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 
@@ -72,7 +72,6 @@ export function SiteHeader() {
   // Derive active org from live API data; fall back to session while loading
   const activeOrg = organizations.find((o: any) => o.isActive) ?? organizations.find((o: any) => o.id === session?.user?.organizationId)
   const activeOrgId = activeOrg?.id ?? session?.user?.organizationId
-  const hasOrg = organizations.length > 0 || !!session?.user?.organizationId
 
   async function handleSwitchOrg(orgId: string) {
     if (orgId === activeOrgId || isSwitching) return
@@ -174,35 +173,24 @@ export function SiteHeader() {
                 <DropdownMenuSeparator />
 
                 {/* Navigation links */}
-                {hasOrg ? (
-                  <>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/posts">
-                        <FileText className="mr-2 h-4 w-4" />
-                        <span>My Content</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/settings/profile">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <DropdownMenuItem asChild>
-                    <Link href="/onboarding">
-                      <Star className="mr-2 h-4 w-4" />
-                      <span>Get Started</span>
-                    </Link>
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/posts">
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span>My Content</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings/profile">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
 
                 {(activeOrg?.role === "ORG_ADMIN" || session.user.role === "ORG_ADMIN") && (
                   <DropdownMenuItem asChild>

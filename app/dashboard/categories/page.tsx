@@ -22,7 +22,7 @@ export default async function CategoriesPage() {
 
     const user = await db.user.findUnique({ where: { id: session.user.id }, select: { organizationId: true } });
     const orgId = user?.organizationId;
-    if (!orgId) redirect("/onboarding");
+    if (!orgId) redirect("/dashboard");
 
     const canManage = await canUserPerformAction(session.user.id, "org:manage_categories", orgId);
     if (!canManage) redirect("/dashboard");

@@ -93,6 +93,6 @@ export default async function DashboardPage() {
     }
   }
 
-  // Fallback: If none of the above, user needs to start onboarding
-  redirect("/onboarding");
+  // Fallback: redirect to dashboard (modal will prompt org creation)
+  redirect("/dashboard");
 }

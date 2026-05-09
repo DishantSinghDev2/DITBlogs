@@ -14,7 +14,6 @@ declare module "next-auth" {
       email: string;
       role: string;
       image: string;
-      onboardingCompleted: boolean;
       organizationId: string;
       plan: string;
       organizations: Array<{
@@ -31,7 +30,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     role?: string;
-    onboardingCompleted?: boolean;
     organizationId?: string;
     plan?: string;
     membershipStatus?: string;
@@ -145,7 +143,6 @@ export const authOptions: NextAuthOptions = {
           email: dbUser.email,
           picture: dbUser.image,
           role: dbUser.role,
-          onboardingCompleted: dbUser.onboardingCompleted ?? false,
           membershipStatus: dbUser.membershipStatus,
           plan: dbUser.organization?.plan,
           organizationId: dbUser.organizationId,
@@ -171,7 +168,6 @@ export const authOptions: NextAuthOptions = {
         session.user.email = token.email as string;
         session.user.image = token.picture as string;
         session.user.role = token.role as string;
-        session.user.onboardingCompleted = (token.onboardingCompleted ?? false) as boolean;
         session.user.plan = token.plan as string;
         session.user.organizationId = token.organizationId as string;
         session.user.organizations = (token.organizations as any) ?? [];

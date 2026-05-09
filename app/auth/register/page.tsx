@@ -80,7 +80,7 @@ export default function RegisterPage() {
       if (signInResult?.error) {
         router.push("/auth/login")
       } else {
-        router.push("/onboarding")
+        router.push("/dashboard")
       }
     } catch {
       setError("An unexpected error occurred. Please try again.")
@@ -92,7 +92,7 @@ export default function RegisterPage() {
   async function handleGoogleLogin() {
     setIsGoogleLoading(true)
     setError(null)
-    await signIn("google", { callbackUrl: "/onboarding" })
+    await signIn("google", { callbackUrl: "/dashboard" })
   }
 
   return (

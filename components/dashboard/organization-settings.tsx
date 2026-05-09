@@ -62,7 +62,7 @@ export function OrganizationSettings({ organization }: OrganizationSettingsProps
         try {
             await fetch(`/api/organizations/${organization.id}`, { method: 'DELETE' });
             toast({ title: "Organization Deleted", description: "Your organization and all its data have been removed." });
-            router.push('/onboarding'); // Redirect user to re-onboard
+            router.push('/dashboard');
             router.refresh();
         } catch (error) {
             toast({ title: "Error deleting organization.", variant: "destructive" });

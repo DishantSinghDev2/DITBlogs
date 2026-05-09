@@ -46,17 +46,12 @@ export async function PATCH(req: Request, { params }: { params: { inviteId: stri
                 data: {
                   organizationId: invite.organizationId,
                   role: UserRole.WRITER,
-                  onboardingCompleted: true,
+                  
                   membershipStatus: "APPROVED",
                 },
               }),
             ]
-          : [
-              db.user.update({
-                where: { id: session.user.id },
-                data: { onboardingCompleted: true },
-              }),
-            ]),
+          : []),
         db.invite.update({ where: { id: inviteId }, data: { status: "ACCEPTED" } }),
         // Upsert UserOrganization
         db.userOrganization.upsert({

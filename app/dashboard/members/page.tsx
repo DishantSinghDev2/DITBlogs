@@ -22,7 +22,7 @@ export default async function MembersPage({
     select: { organizationId: true },
   });
   const orgId = user?.organizationId;
-  if (!orgId) redirect("/onboarding");
+  if (!orgId) redirect("/dashboard");
 
   const userRole = await getUserRoleInOrg(session.user.id, orgId);
   if (userRole !== "ORG_ADMIN") redirect("/dashboard");

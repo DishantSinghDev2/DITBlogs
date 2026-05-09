@@ -2,18 +2,21 @@
 
 import { useState, type ReactNode } from "react";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { CreateOrgModal } from "@/components/dashboard/create-org-modal";
 import { PenTool, Sidebar as SidebarIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type UserRole } from "@prisma/client";
-import { motion, AnimatePresence } from "framer-motion"; // Import framer-motion
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { SiteFooter } from "../site-footer";
 
 export function DashboardShell({
   userRole,
+  hasOrg,
   children,
 }: {
   userRole: UserRole | null;
+  hasOrg: boolean;
   children: ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,6 +29,7 @@ export function DashboardShell({
 
   return (
     <div className="relative flex min-h-screen w-full bg-muted/40">
+      <CreateOrgModal open={!hasOrg} />
       {/* --- Desktop Sidebar --- */}
       {/* This is fixed on the left for medium screens and up */}
       <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 md:top-16">
