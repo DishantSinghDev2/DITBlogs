@@ -20,7 +20,8 @@ export default withAuth(
 
       // State 1: User is fully onboarded and has an active membership.
       // They should be able to access the app but not the onboarding/rejected pages.
-      if (onboardingCompleted) {
+      // Treat a populated organizationId as proof of onboarding too (belt + suspenders).
+      if (onboardingCompleted || token.organizationId) {
         if (pathname === "/onboarding" || pathname === "/rejected") {
           return NextResponse.redirect(dashboardUrl);
         }

@@ -13,21 +13,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/auth/login");
   }
 
-  // FIX: Fetch the user from the DB to get their organization context
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      organizationId: true,
-    },
-  });
+  // Prefer the organizationId from the session (already in JWT), fall back to DB.
+  let activeOrgId = session.user.organizationId
 
-  const activeOrgId = user?.organizationId;
-
-  // If user has no organization context, they can't use the dashboard.
   if (!activeOrgId) {
-    // This could happen if a writer's request hasn't been approved yet.
-    // Redirect them to a waiting page or back to onboarding.
-    redirect("/onboarding");
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { organizationId: true, onboardingCompleted: true },
+    })
+    activeOrgId = user?.organizationId ?? undefined
+
+    // Only send to onboarding if they genuinely haven't completed it.
+    if (!activeOrgId && !user?.onboardingCompleted) {
+      redirect("/onboarding")
+    }
   }
 
   // FIX: Call the function with the correct arguments
