@@ -27,7 +27,8 @@ export default function OnboardingFlow() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { update } = useSession();
+  const { data: session, update } = useSession();
+  const hasExistingOrgs = (session?.user?.organizations?.length ?? 0) > 0;
 
   const [view, setView] = useState<OnboardingView | null>('loading');
   const [isLoading, setIsLoading] = useState(false);
@@ -240,6 +241,11 @@ export default function OnboardingFlow() {
               <CardContent className="space-y-4">
                 <RoleCard icon={<PenSquare />} title="I'm a Writer or Editor" description="Join an existing organization." onClick={() => setView('joinForm')} />
                 <RoleCard icon={<Users />} title="I'm setting up an Organization" description="Create a new workspace for your team." onClick={() => setView('createForm')} />
+                {hasExistingOrgs && (
+                  <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => router.push('/dashboard')}>
+                    Skip — go to my dashboard
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
