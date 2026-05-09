@@ -11,30 +11,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
     }
 
-    // Imagen 3 — Google's latest dedicated image generation model (May 2025)
-    // Produces photorealistic, high-quality images with better prompt adherence
-    // than the Gemini flash preview model.
-    const result = await genAI.models.generateImages({
-      model: "imagen-3.0-generate-001",
-      prompt,
+    // --- Try Imagen 4 first (best quality, dedicated image model) ---
+    try {
+      const result = await genAI.models.generateImages({
+        model: "imagen-4.0-generate-001",
+        prompt,
+        config: {
+          numberOfImages: 1,
+          aspectRatio: "16:9",
+          outputMimeType: "image/jpeg",
+        },
+      })
+
+      const imageBytes = result.generatedImages?.[0]?.image?.imageBytes
+      if (imageBytes) {
+        return NextResponse.json({ imageUrl: `data:image/jpeg;base64,${imageBytes}` })
+      }
+    } catch (imagenErr: any) {
+      // Imagen 4 not available for this API key (e.g. needs Vertex AI or allowlist)
+      // Fall through to Gemini flash image generation below.
+      console.warn("[IMAGE_GEN] Imagen 4 unavailable, falling back to Gemini flash:", imagenErr?.message)
+    }
+
+    // --- Fallback: gemini-2.0-flash with native image output ---
+    const result = await genAI.models.generateContent({
+      model: "gemini-2.0-flash-preview-image-generation",
+      contents: [{ role: "user", parts: [{ text: `Generate an image of: ${prompt}` }] }],
       config: {
-        numberOfImages: 1,
-        aspectRatio: "16:9",        // Ideal for blog featured images
-        outputMimeType: "image/jpeg",
-        safetyFilterLevel: "BLOCK_SOME",
+        responseModalities: ["Text", "Image"],
+        candidateCount: 1,
       },
     })
 
-    const imageBytes = result.generatedImages?.[0]?.image?.imageBytes
-    if (!imageBytes) {
-      console.error("Imagen 3 response had no image bytes:", JSON.stringify(result, null, 2))
-      throw new Error("Image generation failed: no image returned.")
+    const parts = result.candidates?.[0]?.content?.parts
+    const imagePart = parts?.find((p: any) => p.inlineData)
+
+    if (imagePart?.inlineData?.data) {
+      const { mimeType, data } = imagePart.inlineData
+      return NextResponse.json({ imageUrl: `data:${mimeType};base64,${data}` })
     }
 
-    // Return as a data URL so the ImageUploader can display and then re-upload
-    // to permanent storage (R2 / S3) via /api/upload before saving.
-    const imageUrl = `data:image/jpeg;base64,${imageBytes}`
-    return NextResponse.json({ imageUrl })
+    throw new Error("No image data returned from either model.")
 
   } catch (error: any) {
     console.error("[IMAGE_GEN]", error)
