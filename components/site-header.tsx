@@ -228,9 +228,15 @@ export function SiteHeader() {
                         ))}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <Link href="/onboarding">
+                          <Link href="/dashboard/organizations/new">
                             <PlusCircle className="mr-2 h-4 w-4" />
-                            <span>Join another org</span>
+                            <span>Create new org</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/dashboard/organizations/join">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            <span>Join existing org</span>
                           </Link>
                         </DropdownMenuItem>
                       </DropdownMenuSubContent>

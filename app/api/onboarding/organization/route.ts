@@ -2,8 +2,11 @@ import { db } from "@/lib/db"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 import { getServerSession } from "next-auth/next"
 import { NextResponse } from "next/server"
-import { UserRole } from "@prisma/client"
+import { Plan, UserRole } from "@prisma/client"
 import { invalidateOrgCache } from "@/lib/cache"
+
+// Account that gets CUSTOM plan on every org it creates
+const CUSTOM_PLAN_EMAIL = "dishantsinghdev@icloud.com"
 
 export async function POST(req: Request) {
   try {
@@ -13,24 +16,18 @@ export async function POST(req: Request) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // Prevent creating multiple orgs
-    const existingOrg = await db.organization.findUnique({
-      where: { ownerId: session.user.id },
-    })
-
-    if (existingOrg) {
-      return new NextResponse("User has already created an organization.", { status: 409 })
-    }
-
     const { orgName, website } = await req.json()
 
     if (!orgName || !website) {
       return new NextResponse("Missing required fields", { status: 400 })
     }
 
+    const plan: Plan =
+      session.user.email === CUSTOM_PLAN_EMAIL ? Plan.CUSTOM : Plan.FREE
+
     const newOrganization = await db.$transaction(async (tx) => {
       const organization = await tx.organization.create({
-        data: { name: orgName, website, ownerId: session.user.id },
+        data: { name: orgName, website, ownerId: session.user.id, plan },
       })
 
       await tx.user.update({
@@ -43,7 +40,6 @@ export async function POST(req: Request) {
         },
       })
 
-      // Create UserOrganization record for multi-org support
       await tx.userOrganization.upsert({
         where: {
           userId_organizationId: {
@@ -71,9 +67,6 @@ export async function POST(req: Request) {
     return NextResponse.json(newOrganization, { status: 201 })
   } catch (error: any) {
     console.error("[ONBOARDING_ORGANIZATION_POST]", error)
-    if (error.code === "P2002") {
-      return new NextResponse("An organization for this user already exists.", { status: 409 })
-    }
     return new NextResponse("Internal Error", { status: 500 })
   }
 }

@@ -27,8 +27,8 @@ export const getUserById = cache(async (userId: string) => {
           name: true,
         },
       },
-      // Details about the organization the user owns
-      ownedOrganization: {
+      // Details about organizations the user owns
+      ownedOrganizations: {
         select: {
           id: true,
           name: true,

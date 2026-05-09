@@ -17,13 +17,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const user = await db.user.findUnique({
     where: { id: session.user.id },
     select: {
-      organizationId: true, // The org they are a member of
-      ownedOrganization: { select: { id: true } }, // The org they own
+      organizationId: true,
     },
   });
 
-  // Determine the active organization ID. Prioritize ownership.
-  const activeOrgId = user?.ownedOrganization?.id || user?.organizationId;
+  const activeOrgId = user?.organizationId;
 
   // If user has no organization context, they can't use the dashboard.
   if (!activeOrgId) {
