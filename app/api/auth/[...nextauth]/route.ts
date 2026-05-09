@@ -105,33 +105,39 @@ export const authOptions: NextAuthOptions = {
         return { ...token, ...sessionUpdate };
       }
 
-      // token.email is set by NextAuth from the user object on first sign-in
+      // Resolve every available identifier so we can always reach the DB.
+      // token.sub is the user ID set by NextAuth unconditionally; token.email
+      // and user.email may be absent if a previous JWT callback threw before
+      // writing them to the cookie.
       const email = token.email ?? (user as any)?.email;
-      if (!email) {
-        if (user) token.id = user.id;
-        return token;
-      }
+      const userId = (token as any).sub ?? (token as any).id ?? user?.id;
+
+      if (!email && !userId) return token;
 
       try {
-        const dbUser = await db.user.findFirst({
-          where: { email },
-          include: {
-            organization: { select: { plan: true } },
-            userOrganizations: {
-              where: { membershipStatus: "APPROVED" },
+        const dbUser = email
+          ? await db.user.findFirst({
+              where: { email },
               include: {
-                organization: {
-                  select: { id: true, name: true, plan: true },
+                organization: { select: { plan: true } },
+                userOrganizations: {
+                  where: { membershipStatus: "APPROVED" },
+                  include: { organization: { select: { id: true, name: true, plan: true } } },
                 },
               },
-            },
-          },
-        });
+            })
+          : await db.user.findUnique({
+              where: { id: userId },
+              include: {
+                organization: { select: { plan: true } },
+                userOrganizations: {
+                  where: { membershipStatus: "APPROVED" },
+                  include: { organization: { select: { id: true, name: true, plan: true } } },
+                },
+              },
+            });
 
-        if (!dbUser) {
-          if (user) token.id = user.id;
-          return token;
-        }
+        if (!dbUser) return token;
 
         return {
           id: dbUser.id,
@@ -152,8 +158,6 @@ export const authOptions: NextAuthOptions = {
         };
       } catch (err) {
         console.error("[AUTH_JWT]", err);
-        // Return token as-is so the session doesn't hard-crash
-        if (user) token.id = user.id;
         return token;
       }
     },
