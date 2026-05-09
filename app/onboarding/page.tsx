@@ -7,11 +7,11 @@ import OnboardingFlow from "@/components/OnboardingFlow"
 export default async function OnboardingPage() {
   const session = await getServerSession(authOptions)
 
-  // Resolve user ID from session — token.sub is always set by NextAuth
-  const userId = session?.user?.id ?? (session as any)?.token?.sub
+  // session.user.id is now guaranteed (falls back to token.sub in session callback)
+  const userId = session?.user?.id
   if (!userId) redirect("/auth/login")
 
-  // Query DB directly — don't rely on potentially stale session/JWT fields
+  // Query DB directly — never trust stale JWT fields for onboarding state
   const dbUser = await db.user.findUnique({
     where: { id: userId },
     select: { onboardingCompleted: true, organizationId: true },

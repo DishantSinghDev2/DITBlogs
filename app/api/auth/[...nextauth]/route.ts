@@ -164,12 +164,14 @@ export const authOptions: NextAuthOptions = {
 
     async session({ token, session }) {
       if (token) {
-        session.user.id = token.id as string;
+        // token.sub is set unconditionally by NextAuth; token.id is set by our
+        // jwt callback. Fall back to sub so session.user.id is always populated.
+        session.user.id = (token.id ?? token.sub) as string;
         session.user.name = token.name as string;
         session.user.email = token.email as string;
         session.user.image = token.picture as string;
         session.user.role = token.role as string;
-        session.user.onboardingCompleted = token.onboardingCompleted as boolean;
+        session.user.onboardingCompleted = (token.onboardingCompleted ?? false) as boolean;
         session.user.plan = token.plan as string;
         session.user.organizationId = token.organizationId as string;
         session.user.organizations = (token.organizations as any) ?? [];
