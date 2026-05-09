@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { CreateOrgModal } from "@/components/dashboard/create-org-modal"
+import { InviteModal } from "@/components/invite-modal"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -331,6 +332,7 @@ export function SiteHeader() {
       </AnimatePresence>
 
       <CreateOrgModal open={createOrgOpen} onClose={() => setCreateOrgOpen(false)} />
+      {session && <InviteModal />}
     </header>
   )
 }
