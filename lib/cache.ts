@@ -11,9 +11,9 @@ export const CACHE_KEYS = {
 }
 
 export const CACHE_TTL = {
-  post: 60 * 60 * 24,      // 24h for individual posts
-  posts: 60 * 60 * 2,      // 2h for post listings
-  featured: 60 * 60 * 6,   // 6h for featured posts
+  post: 60 * 5,             // 5 min — short so edits/deletes propagate quickly
+  posts: 60 * 5,            // 5 min for post listings
+  featured: 60 * 10,        // 10 min for featured posts
   orgList: 60 * 60,         // 1h for org list
   stats: 60 * 15,           // 15min for stats
 }

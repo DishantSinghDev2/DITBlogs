@@ -31,7 +31,8 @@ export const getAllPosts = cache(
     const cached = await cacheGet<{ posts: unknown[]; pagination: unknown }>(cacheKey);
     if (cached) return cached;
 
-    const query: any = {};
+    // Only return published posts (publishedAt set) in public-facing listings
+    const query: any = { publishedAt: { not: null } };
 
     if (featured) query.featured = true;
 
@@ -88,6 +89,10 @@ export const getAllPosts = cache(
 );
 
 export const getPostBySlug = cache(async (slug: string, userId?: string) => {
+  // Guard: slug must be a non-empty string. Next.js 15 async params can
+  // resolve to undefined in edge cases; bail early rather than caching null.
+  if (!slug || typeof slug !== "string") return null;
+
   const cacheKey = CACHE_KEYS.post(slug);
 
   const cached = await cacheGet<any>(cacheKey);
@@ -99,7 +104,10 @@ export const getPostBySlug = cache(async (slug: string, userId?: string) => {
   }
 
   const post = await db.post.findUnique({
-    where: { slug },
+    where: {
+      slug,
+      publishedAt: { not: null }, // only serve published posts publicly
+    },
     include: {
       author: {
         select: { id: true, name: true, image: true, bio: true },

@@ -1,22 +1,20 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { getPostBySlug } from "@/lib/api/posts"
+import { getPostBySlug, incrementPostView } from "@/lib/api/posts"
 import { BlogPost } from "@/components/blog/blog-post"
 import { BlogAuthor } from "@/components/blog/blog-author"
 import { BlogComments } from "@/components/blog/blog-comments"
 import { BlogRelatedPosts } from "@/components/blog/blog-related-posts"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
-import { incrementPostView } from "@/lib/api/posts"
 
 interface BlogPostPageProps {
-  params: {
-    slug: string
-  }
+  // Next.js 15: params is a Promise
+  params: Promise<{ slug: string }>
 }
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
-  const {slug} = await params;
+  const { slug } = await params
   const post = await getPostBySlug(slug)
 
   if (!post) {
@@ -26,8 +24,6 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     }
   }
 
-  console.log(post)
-
   return {
     title: post.metaTitle || post.title,
     description: post.metaDescription || post.excerpt,
@@ -35,18 +31,11 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       title: post.metaTitle || post.title,
       description: post.metaDescription || post.excerpt,
       type: "article",
-      publishedTime: new Date(post.publishedAt).toISOString() || new Date(post.createdAt).toISOString(),
+      publishedTime: post.publishedAt ? new Date(post.publishedAt).toISOString() : undefined,
       modifiedTime: new Date(post.updatedAt).toISOString(),
       authors: [post.author.name],
       images: post.featuredImage
-        ? [
-            {
-              url: post.featuredImage,
-              width: 1200,
-              height: 630,
-              alt: post.title,
-            },
-          ]
+        ? [{ url: post.featuredImage, width: 1200, height: 630, alt: post.title }]
         : [],
     },
     twitter: {
@@ -59,18 +48,19 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const post = await getPostBySlug(params.slug)
+  // Next.js 15: always await params before reading properties
+  const { slug } = await params
+  const post = await getPostBySlug(slug)
 
   if (!post) {
     notFound()
   }
 
-  // Increment view count
-  await incrementPostView(post.id)
+  // Increment view count (fire-and-forget — don't block render)
+  incrementPostView(post.id).catch(() => {})
 
   const session = await getServerSession(authOptions)
   const userId = session?.user?.id
-
 
   return (
     <main className="container mx-auto px-4 py-8">
