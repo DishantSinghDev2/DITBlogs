@@ -3,7 +3,29 @@ import { db } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateAndCheckUsage } from "@/lib/api/v1/auth";
+import { authenticateForWrite } from "@/lib/api/v1/write-auth";
+import { invalidateAllPostsCache, invalidatePostCache } from "@/lib/cache";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
+import slugify from "slugify";
+
+// ─── Zod schema for POST /api/v1/posts ────────────────────────────────────────
+
+const createPostSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  content: z.unknown().refine((v) => v !== undefined && v !== null, {
+    message: "Content is required",
+  }),
+  slug: z.string().min(3).optional(),
+  excerpt: z.string().optional(),
+  featuredImage: z.string().url("featuredImage must be a valid URL").optional(),
+  metaTitle: z.string().optional(),
+  metaDescription: z.string().optional(),
+  categorySlug: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  publish: z.boolean().optional().default(false),
+  featured: z.boolean().optional().default(false),
+});
 
 export async function GET(req: NextRequest) {
   // 1. Authenticate and authorize the request
@@ -89,5 +111,105 @@ export async function GET(req: NextRequest) {
   } catch (dbError) {
     console.error("[V1_POSTS_GET_ERROR]", dbError);
     return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
+// ─── POST /api/v1/posts ────────────────────────────────────────────────────────
+// Create a new post. Requires Bearer API key. The post is scoped to the org
+// that owns the key. By default the post is saved as a draft (publishedAt=null);
+// pass `"publish": true` to publish immediately.
+
+export async function POST(req: NextRequest) {
+  const { error, status, org } = await authenticateForWrite(req);
+  if (error || !org) return NextResponse.json({ error }, { status });
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const parsed = createPostSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+
+  const { title, content, excerpt, featuredImage, metaTitle, metaDescription, categorySlug, tags, publish, featured } = parsed.data;
+
+  try {
+    // Resolve / generate slug
+    let slug = parsed.data.slug ?? slugify(title, { lower: true, strict: true });
+    const conflict = await db.post.findUnique({ where: { slug } });
+    if (conflict) slug = `${slug}-${Date.now()}`;
+
+    // Resolve category (org-scoped, created if missing)
+    let categoryId: string | undefined;
+    if (categorySlug) {
+      const cat = await db.category.upsert({
+        where: { organizationId_slug: { organizationId: org.id, slug: categorySlug } },
+        create: {
+          name: categorySlug,
+          slug: categorySlug,
+          organizationId: org.id,
+        },
+        update: {},
+        select: { id: true },
+      });
+      categoryId = cat.id;
+    }
+
+    // Resolve tags (org-scoped, created if missing)
+    let tagIds: { id: string }[] = [];
+    if (tags && tags.length > 0) {
+      tagIds = await Promise.all(
+        tags.map(async (t) => {
+          const tagSlug = slugify(t, { lower: true, strict: true });
+          const tag = await db.tag.upsert({
+            where: { organizationId_slug: { organizationId: org.id, slug: tagSlug } },
+            create: { name: t, slug: tagSlug, organizationId: org.id },
+            update: {},
+            select: { id: true },
+          });
+          return tag;
+        })
+      );
+    }
+
+    const post = await db.post.create({
+      data: {
+        title,
+        slug,
+        content: content as Prisma.InputJsonValue,
+        excerpt,
+        featuredImage,
+        metaTitle,
+        metaDescription,
+        featured: featured ?? false,
+        publishedAt: publish ? new Date() : null,
+        organizationId: org.id,
+        authorId: org.ownerId,
+        ...(categoryId && { categoryId }),
+        ...(tagIds.length > 0 && { tags: { connect: tagIds } }),
+      },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        publishedAt: true,
+        featured: true,
+        category: { select: { name: true, slug: true } },
+        tags: { select: { name: true, slug: true } },
+      },
+    });
+
+    await invalidateAllPostsCache(org.id);
+    if (publish) await invalidatePostCache(post.slug, org.id);
+
+    return NextResponse.json(post, { status: 201 });
+  } catch (err) {
+    console.error("[V1_POSTS_POST_ERROR]", err);
+    return NextResponse.json({ error: "Failed to create post." }, { status: 500 });
   }
 }

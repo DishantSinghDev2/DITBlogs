@@ -59,3 +59,40 @@ DITBlogs is built with a modern, type-safe, and scalable technology stack:
 | **Email**         | ![Nodemailer](https://img.shields.io/badge/Nodemailer-6-4B8505?logo=nodedotjs)                                    |
 | **Caching**       | ![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis)                                             |
 | **Validation**    | ![Zod](https://img.shields.io/badge/Zod-3-blue?logo=zod)                                                     |
+
+## 🔌 Public API
+
+DITBlogs exposes a versioned REST API (`/api/v1/`) that lets you read **and write** content from any external system — your website, a CI pipeline, a migration script, or a custom integration.
+
+Full reference: **[docs/api.md](docs/api.md)**
+
+### Quick start
+
+1. Go to your organization's **Settings → API Keys** and create a key.
+2. Include it as a Bearer token on every request:
+
+```http
+Authorization: Bearer ditb_<your-key>
+```
+
+### Read endpoints (GET)
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/v1/posts` | List published posts (paginated) |
+| `GET /api/v1/posts/:slug` | Get a single post by slug |
+| `GET /api/v1/categories` | List categories |
+| `GET /api/v1/tags` | List tags |
+| `GET /api/v1/comments` | List comments |
+
+### Write endpoints (POST / PUT / DELETE)
+
+| Endpoint | Description |
+|---|---|
+| `POST /api/v1/posts` | Create a post (draft by default) |
+| `PUT /api/v1/posts/:slug` | Partial-update a post |
+| `DELETE /api/v1/posts/:slug` | Delete a post |
+| `POST /api/v1/posts/:slug/publish` | Publish a draft |
+| `POST /api/v1/posts/:slug/unpublish` | Revert a post to draft |
+
+> All write operations are scoped to the organization that owns the API key.
