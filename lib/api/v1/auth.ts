@@ -24,7 +24,7 @@ export async function authenticateAndCheckUsage(req: NextRequest) {
   try {
     const identifier = apiKeyString || ip;
     const { success } = await customRateLimiter({
-      redis: redis, identifier, limit: 10, window: 10,
+      redis: redis, identifier, limit: 120, window: 10,
     });
     if (!success) return { error: "Too Many Requests.", status: 429 };
   } catch (e) {
